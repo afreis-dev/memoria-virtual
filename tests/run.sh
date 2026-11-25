@@ -2,7 +2,10 @@
 
 root=$(pwd)
 VM=${VM:-$root/vm}
+FRAMES=${FRAMES:-128}
+POLICIES="fifo"
 dados=$root/dados
+modelo=$root/tests/modelo.awk
 status=0
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
@@ -40,38 +43,18 @@ make_backing() {
     LC_ALL=C awk 'BEGIN { for (i = 0; i < 65536; i++) printf "%c", (int(i / 256) + i) % 256 }' > "$1"
 }
 
-expected_output() {
-    awk '
-    NF == 0 { next }
-    {
-        v = $1 % 65536
-        page = int(v / 256)
-        off = v % 256
-        if (!(page in frame)) {
-            frame[page] = used++
-            faults++
-        }
-        value = (page + off) % 256
-        if (value > 127) {
-            value -= 256
-        }
-        printf "Virtual address: %d Physical address: %d Value: %d\n", v, frame[page] * 256 + off, value
-        total++
-    }
-    END {
-        printf "Number of Translated Addresses = %d\n", total
-        printf "Page Faults = %d\n", faults
-        printf "Page Fault Rate = %.3f\n", faults / total
-    }' "$1"
+model() {
+    awk -f "$modelo" -v frames="$FRAMES" -v pagina="$1" -v tlb="$2" -v valores="$4" "$3"
 }
 
 expect_translation() {
     name=$1
     input=$2
+    policy=$3
     rm -f correct.txt
-    "$VM" "$input" lru fifo > /dev/null 2>&1
+    "$VM" "$input" "$policy" fifo > /dev/null 2>&1
     code=$?
-    expected_output "$input" > "$tmp/esperado-saida.txt"
+    model "$policy" none "$input" > "$tmp/esperado-saida.txt"
     if [ "$code" -eq 0 ] && cmp -s correct.txt "$tmp/esperado-saida.txt"; then
         pass "$name"
     else
@@ -109,6 +92,18 @@ printf '12\000\n' > "$tmp/nulo.txt"
 printf '12abc\n' > "$tmp/misto.txt"
 printf '0\n255\n256\n65535\n65536\n70000\n4294967295\n' > "$tmp/traducao.txt"
 printf '100\n100\n356\n100\n300\n356\n65280\n' > "$tmp/repetidos.txt"
+awk 'BEGIN {
+    for (i = 0; i < 200; i++) print i * 256 + 5
+    for (i = 0; i < 200; i += 3) print i * 256 + 9
+    for (i = 199; i >= 0; i -= 5) print i * 256 + 250
+}' > "$tmp/substituicao.txt"
+awk 'BEGIN {
+    for (i = 0; i < 128; i++) print i * 256
+    print 0
+    print 128 * 256
+    print 0
+    print 256
+}' > "$tmp/fila.txt"
 
 mkdir "$tmp/work" "$tmp/semstore" "$tmp/curto" "$tmp/dirstore" "$tmp/saida"
 make_backing "$tmp/work/BACKING_STORE.bin"
@@ -146,62 +141,63 @@ expect_error "valor acima de 32 bits" "linha 1: valor fora do intervalo" "$VM" "
 expect_error "byte nulo" "linha 1: caractere invalido 0x00" "$VM" "$tmp/nulo.txt" lru fifo
 expect_error "numero seguido de texto" "linha 1: caractere invalido 'a'" "$VM" "$tmp/misto.txt" lru fifo
 
-expect_error "memoria secundaria ausente" "BACKING_STORE.bin nao encontrado" in_dir "$tmp/semstore" "$VM" "$tmp/valido.txt" lru fifo
-expect_error "memoria secundaria com tamanho errado" "deve ter 65536 bytes, mas tem 1000" in_dir "$tmp/curto" "$VM" "$tmp/valido.txt" lru fifo
-expect_error "memoria secundaria e um diretorio" "nao e um arquivo regular" in_dir "$tmp/dirstore" "$VM" "$tmp/valido.txt" lru fifo
-expect_error "arquivo de saida nao pode ser criado" "nao foi possivel criar correct.txt" in_dir "$tmp/saida" "$VM" "$tmp/valido.txt" lru fifo
+expect_error "memoria secundaria ausente" "BACKING_STORE.bin nao encontrado" in_dir "$tmp/semstore" "$VM" "$tmp/valido.txt" fifo fifo
+expect_error "memoria secundaria com tamanho errado" "deve ter 65536 bytes, mas tem 1000" in_dir "$tmp/curto" "$VM" "$tmp/valido.txt" fifo fifo
+expect_error "memoria secundaria e um diretorio" "nao e um arquivo regular" in_dir "$tmp/dirstore" "$VM" "$tmp/valido.txt" fifo fifo
+expect_error "arquivo de saida nao pode ser criado" "nao foi possivel criar correct.txt" in_dir "$tmp/saida" "$VM" "$tmp/valido.txt" fifo fifo
 
 rm -f correct.txt
-"$VM" "$tmp/naoexiste.txt" lru fifo > /dev/null 2>&1
+"$VM" "$tmp/naoexiste.txt" fifo fifo > /dev/null 2>&1
 if [ ! -e correct.txt ]; then
     pass "entrada invalida nao cria o correct.txt"
 else
     fail "entrada invalida criou o correct.txt"
 fi
 
-expect_translation "saida: enderecos validos" "$tmp/valido.txt"
-expect_translation "saida: bordas e mascara de 16 bits" "$tmp/traducao.txt"
-expect_translation "saida: paginas repetidas reaproveitam o frame" "$tmp/repetidos.txt"
+for policy in $POLICIES; do
+    expect_translation "saida ($policy): enderecos validos" "$tmp/valido.txt" "$policy"
+    expect_translation "saida ($policy): bordas e mascara de 16 bits" "$tmp/traducao.txt" "$policy"
+    expect_translation "saida ($policy): paginas repetidas reaproveitam o frame" "$tmp/repetidos.txt" "$policy"
+    expect_translation "saida ($policy): substituicao de paginas com $FRAMES frames" "$tmp/substituicao.txt" "$policy"
+    expect_translation "saida ($policy): pagina antiga volta a ser acessada" "$tmp/fila.txt" "$policy"
+done
 expect_total "espacos, CRLF e linha em branco" "$tmp/espacos.txt" 3
 expect_total "limites de 32 bits" "$tmp/limites.txt" 2
 
 if [ -f "$dados/addresses.txt" ] && [ -f "$dados/correct.txt" ] && [ -f "$dados/BACKING_STORE.bin" ]; then
+    awk '/^Virtual/ {print $10}' "$dados/correct.txt" > "$tmp/valores.txt"
+
+    awk -f "$modelo" -v frames=128 -v pagina=lru -v tlb=fifo -v valores="$tmp/valores.txt" "$dados/addresses.txt" > "$tmp/modelo-professor.txt"
+    if cmp -s "$tmp/modelo-professor.txt" "$dados/correct.txt"; then
+        pass "modelo awk reproduz o correct.txt do professor"
+    else
+        fail "modelo awk difere do correct.txt do professor"
+    fi
+
     mkdir "$tmp/prof"
     cp "$dados/BACKING_STORE.bin" "$tmp/prof/"
-    in_dir "$tmp/prof" "$VM" "$dados/addresses.txt" lru fifo > /dev/null 2>&1
-    saida=$tmp/prof/correct.txt
-
-    paginas=$(awk '{print int($1 / 256)}' "$dados/addresses.txt" | sort -u | wc -l | tr -d ' ')
-    if grep -qx "Page Faults = $paginas" "$saida"; then
-        pass "professor: page faults iguais ao numero de paginas distintas ($paginas)"
-    else
-        fail "professor: page faults diferentes de $paginas"
-    fi
-
-    awk '/^Virtual/ {print $3, $8}' "$saida" > "$tmp/obtido.txt"
-    awk '/^Virtual/ {print $3, $10}' "$dados/correct.txt" > "$tmp/esperado.txt"
-    if [ -s "$tmp/obtido.txt" ] && cmp -s "$tmp/obtido.txt" "$tmp/esperado.txt"; then
-        pass "professor: coluna Value confere com o correct.txt"
-    else
-        fail "professor: coluna Value difere do correct.txt"
-    fi
-
-    awk '/^Virtual/ {print $3, $6 % 256}' "$saida" > "$tmp/obtido.txt"
-    awk '/^Virtual/ {print $3, $8 % 256}' "$dados/correct.txt" > "$tmp/esperado.txt"
-    if [ -s "$tmp/obtido.txt" ] && cmp -s "$tmp/obtido.txt" "$tmp/esperado.txt"; then
-        pass "professor: deslocamento confere com o correct.txt"
-    else
-        fail "professor: deslocamento difere do correct.txt"
-    fi
-
-    limite=$(awk '/^Virtual/ { p = int($3 / 256); if (!(p in v)) { v[p] = 1; if (++n == 129) { print NR - 1; exit } } }' "$dados/correct.txt")
-    head -n "$limite" "$saida" | awk '{print $3, $6}' > "$tmp/obtido.txt"
-    head -n "$limite" "$dados/correct.txt" | awk '{print $3, $8}' > "$tmp/esperado.txt"
-    if [ -s "$tmp/obtido.txt" ] && cmp -s "$tmp/obtido.txt" "$tmp/esperado.txt"; then
-        pass "professor: enderecos fisicos conferem ate a primeira substituicao (linha $limite)"
-    else
-        fail "professor: enderecos fisicos diferem antes da primeira substituicao"
-    fi
+    for policy in $POLICIES; do
+        in_dir "$tmp/prof" "$VM" "$dados/addresses.txt" "$policy" fifo > /dev/null 2>&1
+        model "$policy" none "$dados/addresses.txt" "$tmp/valores.txt" > "$tmp/esperado-prof.txt"
+        if cmp -s "$tmp/prof/correct.txt" "$tmp/esperado-prof.txt"; then
+            pass "professor ($policy, $FRAMES frames): saida igual ao modelo"
+        else
+            fail "professor ($policy, $FRAMES frames): saida difere do modelo"
+        fi
+        case "$FRAMES-$policy" in
+            256-*) faltas=244 ;;
+            128-fifo) faltas=538 ;;
+            128-lru) faltas=539 ;;
+            *) faltas= ;;
+        esac
+        if [ -n "$faltas" ]; then
+            if grep -qx "Page Faults = $faltas" "$tmp/prof/correct.txt"; then
+                pass "professor ($policy, $FRAMES frames): $faltas page faults"
+            else
+                fail "professor ($policy, $FRAMES frames): page faults diferentes de $faltas"
+            fi
+        fi
+    done
 fi
 
 if [ "$status" -eq 0 ]; then
