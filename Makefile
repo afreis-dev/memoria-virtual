@@ -6,7 +6,7 @@ TARGET = vm
 SOURCES = $(wildcard src/*.c)
 OBJECTS = $(patsubst src/%.c,build/%.o,$(SOURCES))
 
-.PHONY: all clean
+.PHONY: all clean test
 
 all: $(TARGET)
 
@@ -18,6 +18,9 @@ build/%.o: src/%.c | build
 
 build:
 	mkdir -p build
+
+test: $(TARGET)
+	sh tests/run.sh
 
 clean:
 	rm -rf build $(TARGET)
