@@ -99,7 +99,7 @@ make sanitize    # a suíte inteira com AddressSanitizer e UndefinedBehaviorSani
 make mutantes    # quebra o código de propósito e confere que os testes falham
 ```
 
-`make test FRAMES=256`, `make test TLB=off` e `make test THREADS=off` exercitam os outros fluxos. `tests/modelo.awk` é um modelo de referência independente, validado contra o `correct.txt` do professor, que serve de juiz para as combinações sem arquivo de referência.
+`make test FRAMES=256`, `make test TLB=off` e `make test THREADS=off` exercitam os outros fluxos; `make test FRAMES=4` faz a memória encher a toda hora e é o que exercita a invalidação da TLB também com LRU de página. `tests/modelo.awk` é um modelo de referência independente, validado contra o `correct.txt` do professor, que serve de juiz para as combinações sem arquivo de referência.
 
 ## Estrutura
 
