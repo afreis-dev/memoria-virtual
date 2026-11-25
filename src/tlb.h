@@ -45,7 +45,7 @@ void tlb_hit(Tlb *tlb, int slot, size_t now);
  */
 int tlb_insert(Tlb *tlb, uint8_t page, int frame, size_t now);
 
-/** Remove da TLB a entrada de page, se existir. */
+/** Remove da TLB a entrada de page, se existir. A busca aqui e sempre sequencial. */
 void tlb_invalidate(Tlb *tlb, uint8_t page);
 
 #endif
