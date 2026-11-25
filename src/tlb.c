@@ -128,7 +128,7 @@ int tlb_insert(Tlb *tlb, uint8_t page, int frame, size_t now)
 
 void tlb_invalidate(Tlb *tlb, uint8_t page)
 {
-    int slot = tlb_find(tlb, page);
+    int slot = find_sequential(tlb, page);
 
     if (slot >= 0) {
         tlb->entries[slot].page = -1;
