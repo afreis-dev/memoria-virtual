@@ -17,7 +17,7 @@
  * Traduz todos os enderecos, grava o resultado em correct.txt e o resumo no
  * terminal. Retorna 0, ou -1 com a causa em err.
  */
-static int run(const AddressList *addresses, char *err, size_t err_size)
+static int run(const Args *args, const AddressList *addresses, char *err, size_t err_size)
 {
     BackingStore store;
     Vmm vmm;
@@ -29,6 +29,10 @@ static int run(const AddressList *addresses, char *err, size_t err_size)
     if (backing_store_open(&store, BACKING_STORE_PATH, err, err_size) != 0) {
         return -1;
     }
+    if (vmm_init(&vmm, &store, args->page_policy, err, err_size) != 0) {
+        backing_store_close(&store);
+        return -1;
+    }
     out = fopen(OUTPUT_PATH, "w");
     if (out == NULL) {
         snprintf(err, err_size, "nao foi possivel criar %s: %s", OUTPUT_PATH, strerror(errno));
@@ -36,7 +40,6 @@ static int run(const AddressList *addresses, char *err, size_t err_size)
         return -1;
     }
 
-    vmm_init(&vmm, &store);
     for (i = 0; i < addresses->count && status == 0; i++) {
         LogicalAddress split = address_split(addresses->values[i]);
         Access access;
@@ -81,7 +84,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "vm: erro: %s\n", err);
         return EXIT_FAILURE;
     }
-    status = run(&addresses, err, sizeof err);
+    status = run(&args, &addresses, err, sizeof err);
     if (status != 0) {
         fprintf(stderr, "vm: erro: %s\n", err);
     }
