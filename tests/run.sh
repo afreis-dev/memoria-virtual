@@ -41,6 +41,19 @@ expect_ok() {
     fi
 }
 
+expect_stdout() {
+    name=$1
+    expected=$2
+    shift 2
+    "$@" > "$tmp/stdout.txt" 2>/dev/null
+    code=$?
+    if [ "$code" -eq 0 ] && cmp -s "$tmp/stdout.txt" "$expected"; then
+        pass "$name"
+    else
+        fail "$name (status=$code)"
+    fi
+}
+
 printf '16916\n62493\n30198\n' > "$tmp/valido.txt"
 printf '  10 \r\n20\t\r\n\n30' > "$tmp/espacos.txt"
 printf '4294967295\n0\n' > "$tmp/limites.txt"
@@ -55,6 +68,14 @@ printf '0x10\n' > "$tmp/hex.txt"
 printf '4294967296\n' > "$tmp/grande.txt"
 printf '12\000\n' > "$tmp/nulo.txt"
 printf '12abc\n' > "$tmp/misto.txt"
+printf '0\n255\n256\n65535\n65536\n70000\n4294967295\n' > "$tmp/traducao.txt"
+printf 'Virtual address: 0 Page: 0 Offset: 0\n' > "$tmp/traducao-esperada.txt"
+printf 'Virtual address: 255 Page: 0 Offset: 255\n' >> "$tmp/traducao-esperada.txt"
+printf 'Virtual address: 256 Page: 1 Offset: 0\n' >> "$tmp/traducao-esperada.txt"
+printf 'Virtual address: 65535 Page: 255 Offset: 255\n' >> "$tmp/traducao-esperada.txt"
+printf 'Virtual address: 0 Page: 0 Offset: 0\n' >> "$tmp/traducao-esperada.txt"
+printf 'Virtual address: 4464 Page: 17 Offset: 112\n' >> "$tmp/traducao-esperada.txt"
+printf 'Virtual address: 65535 Page: 255 Offset: 255\n' >> "$tmp/traducao-esperada.txt"
 
 expect_error "sem argumentos" "numero de argumentos invalido" "$VM"
 expect_error "um argumento" "numero de argumentos invalido" "$VM" "$tmp/valido.txt"
@@ -84,11 +105,19 @@ expect_error "valor acima de 32 bits" "linha 1: valor fora do intervalo" "$VM" "
 expect_error "byte nulo" "linha 1: caractere invalido 0x00" "$VM" "$tmp/nulo.txt" lru fifo
 expect_error "numero seguido de texto" "linha 1: caractere invalido 'a'" "$VM" "$tmp/misto.txt" lru fifo
 
-expect_ok "enderecos validos" "3 enderecos lidos" "$VM" "$tmp/valido.txt" lru fifo
-expect_ok "espacos, CRLF e linha em branco" "3 enderecos lidos" "$VM" "$tmp/espacos.txt" fifo lru
-expect_ok "limites de 32 bits" "2 enderecos lidos" "$VM" "$tmp/limites.txt" fifo fifo
-if [ -f dados/addresses.txt ]; then
-    expect_ok "arquivo do professor" "1000 enderecos lidos" "$VM" dados/addresses.txt lru fifo
+expect_ok "enderecos validos" "Virtual address: 30198 Page: 117 Offset: 246" "$VM" "$tmp/valido.txt" lru fifo
+expect_ok "espacos, CRLF e linha em branco" "Virtual address: 30 Page: 0 Offset: 30" "$VM" "$tmp/espacos.txt" fifo lru
+expect_ok "limites de 32 bits" "Virtual address: 65535 Page: 255 Offset: 255" "$VM" "$tmp/limites.txt" fifo fifo
+
+expect_stdout "traducao: bordas e mascara de 16 bits" "$tmp/traducao-esperada.txt" "$VM" "$tmp/traducao.txt" lru fifo
+if [ -f dados/addresses.txt ] && [ -f dados/correct.txt ]; then
+    "$VM" dados/addresses.txt lru fifo | awk '{print $3, $5, $7}' > "$tmp/obtido.txt"
+    awk '/^Virtual/ {print $3, int($3 / 256), $8 % 256}' dados/correct.txt > "$tmp/esperado.txt"
+    if [ -s "$tmp/obtido.txt" ] && cmp -s "$tmp/obtido.txt" "$tmp/esperado.txt"; then
+        pass "traducao: pagina e deslocamento conferem com o correct.txt"
+    else
+        fail "traducao: pagina e deslocamento diferem do correct.txt"
+    fi
 fi
 
 if [ "$status" -eq 0 ]; then
