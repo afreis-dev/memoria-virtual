@@ -21,4 +21,7 @@ typedef struct {
  */
 LogicalAddress address_split(uint32_t logical);
 
+/** Monta o endereco fisico a partir do numero do frame e do deslocamento. */
+uint32_t address_physical(uint32_t frame, uint8_t offset);
+
 #endif
