@@ -7,8 +7,8 @@
 #include "args.h"
 #include "backing_store.h"
 #include "input.h"
+#include "mmu.h"
 #include "output.h"
-#include "vmm.h"
 
 #define BACKING_STORE_PATH "BACKING_STORE.bin"
 #define OUTPUT_PATH "correct.txt"
@@ -20,7 +20,7 @@
 static int run(const Args *args, const AddressList *addresses, char *err, size_t err_size)
 {
     BackingStore store;
-    Vmm vmm;
+    Mmu mmu;
     FILE *out;
     size_t i;
     int write_failed;
@@ -36,18 +36,18 @@ static int run(const Args *args, const AddressList *addresses, char *err, size_t
         return -1;
     }
 
-    vmm_init(&vmm, &store, args->page_policy);
+    mmu_init(&mmu, &store, args->page_policy, args->tlb_policy);
     for (i = 0; i < addresses->count && status == 0; i++) {
         LogicalAddress split = address_split(addresses->values[i]);
         Access access;
 
-        status = vmm_access(&vmm, split, &access, err, err_size);
+        status = mmu_translate(&mmu, split, &access, err, err_size);
         if (status == 0) {
             output_write_access(out, split.address, &access);
         }
     }
     if (status == 0) {
-        output_write_summary(out, &vmm);
+        output_write_summary(out, &mmu);
     }
     write_failed = ferror(out) != 0;
     if (fclose(out) != 0 || write_failed) {
@@ -59,7 +59,7 @@ static int run(const Args *args, const AddressList *addresses, char *err, size_t
     if (status != 0) {
         remove(OUTPUT_PATH);
     } else {
-        output_write_summary(stdout, &vmm);
+        output_write_summary(stdout, &mmu);
     }
     backing_store_close(&store);
     return status;
