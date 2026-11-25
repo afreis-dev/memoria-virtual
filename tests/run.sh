@@ -4,6 +4,8 @@ root=$(pwd)
 VM=${VM:-$root/vm}
 FRAMES=${FRAMES:-128}
 TLB=${TLB:-on}
+THREADS=${THREADS:-on}
+SANITIZED=${SANITIZED:-}
 POLICIES="fifo lru"
 if [ "$TLB" = off ]; then
     TLB_POLICIES="fifo"
@@ -200,6 +202,36 @@ for policy in $POLICIES; do
         expect_translation "saida ($rotulo): pagina que perde o frame sai da TLB" "$tmp/invalida.txt" "$policy" "$tpolicy"
     done
 done
+if [ "$TLB" != off ] && [ -z "$SANITIZED" ]; then
+    if cc -shared -fPIC -o "$tmp/conta_threads.so" "$root/tests/conta_threads.c" -ldl 2> /dev/null; then
+        enderecos=$(grep -c . "$tmp/tlb.txt")
+        if [ "$THREADS" = off ]; then
+            esperadas=0
+        else
+            esperadas=$((enderecos * 16))
+        fi
+        rm -f "$tmp/threads.txt"
+        LD_PRELOAD="$tmp/conta_threads.so" CONTA_THREADS_SAIDA="$tmp/threads.txt" "$VM" "$tmp/tlb.txt" fifo fifo > /dev/null 2>&1
+        criadas=$(cat "$tmp/threads.txt" 2> /dev/null)
+        if [ "$criadas" = "$esperadas" ]; then
+            pass "TLB: $criadas threads criadas para $enderecos enderecos (THREADS=$THREADS)"
+        else
+            fail "TLB: $criadas threads criadas para $enderecos enderecos, esperadas $esperadas (THREADS=$THREADS)"
+        fi
+        rm -f correct.txt
+        FALHAR_THREADS=1 LD_PRELOAD="$tmp/conta_threads.so" "$VM" "$tmp/tlb.txt" lru fifo > /dev/null 2>&1
+        code=$?
+        model lru "$(tlb_model fifo)" "$tmp/tlb.txt" > "$tmp/esperado-saida.txt"
+        if [ "$code" -eq 0 ] && cmp -s correct.txt "$tmp/esperado-saida.txt"; then
+            pass "TLB: sem conseguir criar threads, a busca continua correta"
+        else
+            fail "TLB: com a criacao de threads falhando, a saida difere do modelo (status=$code)"
+        fi
+    else
+        fail "nao foi possivel compilar tests/conta_threads.c"
+    fi
+fi
+
 expect_total "espacos, CRLF e linha em branco" "$tmp/espacos.txt" 3
 expect_total "limites de 32 bits" "$tmp/limites.txt" 2
 

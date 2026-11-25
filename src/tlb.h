@@ -8,6 +8,10 @@
 
 #define TLB_SIZE 16u
 
+#ifndef USE_THREADS
+#define USE_THREADS 1
+#endif
+
 typedef struct {
     int16_t page;
     int16_t frame;
@@ -24,7 +28,11 @@ typedef struct {
 /** Esvazia a TLB e define o algoritmo de substituicao das entradas. */
 void tlb_init(Tlb *tlb, Policy policy);
 
-/** Procura page na TLB. Retorna o indice da entrada ou -1 se nao estiver la. */
+/**
+ * Procura page na TLB. Com USE_THREADS, cada entrada e comparada por uma thread
+ * propria (16 threads por consulta); sem, as entradas sao percorridas em ordem.
+ * Retorna o indice da entrada ou -1 se a pagina nao estiver na TLB.
+ */
 int tlb_find(const Tlb *tlb, uint8_t page);
 
 /** Registra um hit na entrada slot: conta o hit e marca o uso em now. */
