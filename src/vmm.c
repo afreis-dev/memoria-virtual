@@ -1,29 +1,34 @@
 #include "vmm.h"
 
-#include <stdio.h>
-
 _Static_assert(FRAME_COUNT > 0 && FRAME_COUNT <= 32767, "FRAME_COUNT fora do intervalo");
 
 /**
  * Escolhe o frame a ser substituido. No FIFO e o frame carregado ha mais tempo:
  * como os frames sao preenchidos em ordem, basta percorre-los em ordem circular.
+ * No LRU e o frame cujo ultimo acesso e o mais antigo.
  */
 static int choose_victim(Vmm *vmm)
 {
-    int frame = (int)vmm->next_victim;
+    size_t victim = 0;
+    size_t frame;
 
-    vmm->next_victim = (vmm->next_victim + 1) % FRAME_COUNT;
-    return frame;
+    if (vmm->policy == POLICY_FIFO) {
+        victim = vmm->next_victim;
+        vmm->next_victim = (vmm->next_victim + 1) % FRAME_COUNT;
+        return (int)victim;
+    }
+    for (frame = 1; frame < FRAME_COUNT; frame++) {
+        if (vmm->last_use[frame] < vmm->last_use[victim]) {
+            victim = frame;
+        }
+    }
+    return (int)victim;
 }
 
-int vmm_init(Vmm *vmm, BackingStore *store, Policy policy, char *err, size_t err_size)
+void vmm_init(Vmm *vmm, BackingStore *store, Policy policy)
 {
     size_t i;
 
-    if (policy != POLICY_FIFO) {
-        snprintf(err, err_size, "substituicao de pagina %s ainda nao implementada", policy_name(policy));
-        return -1;
-    }
     vmm->store = store;
     vmm->policy = policy;
     vmm->used_frames = 0;
@@ -35,8 +40,8 @@ int vmm_init(Vmm *vmm, BackingStore *store, Policy policy, char *err, size_t err
     }
     for (i = 0; i < FRAME_COUNT; i++) {
         vmm->frame_to_page[i] = -1;
+        vmm->last_use[i] = 0;
     }
-    return 0;
 }
 
 int vmm_access(Vmm *vmm, LogicalAddress address, Access *access, char *err, size_t err_size)
@@ -59,6 +64,7 @@ int vmm_access(Vmm *vmm, LogicalAddress address, Access *access, char *err, size
         vmm->page_faults++;
     }
     vmm->accesses++;
+    vmm->last_use[frame] = vmm->accesses;
     access->page_fault = fault;
     access->physical = address_physical((uint32_t)frame, address.offset);
     access->value = (int8_t)vmm->memory[frame][address.offset];

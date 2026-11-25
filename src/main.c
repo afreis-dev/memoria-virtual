@@ -29,10 +29,6 @@ static int run(const Args *args, const AddressList *addresses, char *err, size_t
     if (backing_store_open(&store, BACKING_STORE_PATH, err, err_size) != 0) {
         return -1;
     }
-    if (vmm_init(&vmm, &store, args->page_policy, err, err_size) != 0) {
-        backing_store_close(&store);
-        return -1;
-    }
     out = fopen(OUTPUT_PATH, "w");
     if (out == NULL) {
         snprintf(err, err_size, "nao foi possivel criar %s: %s", OUTPUT_PATH, strerror(errno));
@@ -40,6 +36,7 @@ static int run(const Args *args, const AddressList *addresses, char *err, size_t
         return -1;
     }
 
+    vmm_init(&vmm, &store, args->page_policy);
     for (i = 0; i < addresses->count && status == 0; i++) {
         LogicalAddress split = address_split(addresses->values[i]);
         Access access;
