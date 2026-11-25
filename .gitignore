@@ -1,0 +1,6 @@
+build/
+vm
+correct.txt
+dados/
+*.o
+*.d
