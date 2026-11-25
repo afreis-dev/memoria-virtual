@@ -1,0 +1,924 @@
+Script started on 2026-11-25 18:08:34-03:00 [TERM="linux" TTY="/dev/pts/2" COLUMNS="120" LINES="29"]
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; whoami; pwd
+Wed Nov 25 18:08:36 -03 2026
+afreis
+/mnt/d/Repositorios/CESAR/memoria-virtual
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make clean && make
+rm -rf build vm
+mkdir -p build
+cc -D_POSIX_C_SOURCE=200809L -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/args.c -o build/args.o
+cc -D_POSIX_C_SOURCE=200809L -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/main.c -o build/main.o
+cc -D_POSIX_C_SOURCE=200809L -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/policy.c -o build/policy.o
+cc -std=c11 -Wall -Wextra -Wpedantic -O2 build/args.o build/main.o build/policy.o -o vm 
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ ./vm; echo status=$?
+vm: erro: numero de argumentos invalido (esperado 3, recebido 0)
+uso: ./vm <arquivo_de_enderecos> <fifo|lru> <fifo|lru>
+  arquivo_de_enderecos  enderecos logicos, um inteiro por linha
+  fifo|lru              substituicao de pagina
+  fifo|lru              substituicao da TLB
+status=1
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ ./vm dados/addresses.txt; echo status=$?
+vm: erro: numero de argumentos invalido (esperado 3, recebido 1)
+uso: ./vm <arquivo_de_enderecos> <fifo|lru> <fifo|lru>
+  arquivo_de_enderecos  enderecos logicos, um inteiro por linha
+  fifo|lru              substituicao de pagina
+  fifo|lru              substituicao da TLB
+status=1
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ ./vm dados/addresses.txt lru fifo extra; echo status=$?
+vm: erro: numero de argumentos invalido (esperado 3, recebido 4)
+uso: ./vm <arquivo_de_enderecos> <fifo|lru> <fifo|lru>
+  arquivo_de_enderecos  enderecos logicos, um inteiro por linha
+  fifo|lru              substituicao de pagina
+  fifo|lru              substituicao da TLB
+status=1
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ ./vm dados/addresses.txt xyz fifo; echo status=$?
+vm: erro: algoritmo de substituicao de pagina invalido 'xyz' (use fifo ou lru)
+uso: ./vm <arquivo_de_enderecos> <fifo|lru> <fifo|lru>
+  arquivo_de_enderecos  enderecos logicos, um inteiro por linha
+  fifo|lru              substituicao de pagina
+  fifo|lru              substituicao da TLB
+status=1
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ ./vm dados/addresses.txt lru FIFO; echo status=$?
+vm: erro: algoritmo de substituicao da TLB invalido 'FIFO' (use fifo ou lru)
+uso: ./vm <arquivo_de_enderecos> <fifo|lru> <fifo|lru>
+  arquivo_de_enderecos  enderecos logicos, um inteiro por linha
+  fifo|lru              substituicao de pagina
+  fifo|lru              substituicao da TLB
+status=1
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ ./vm dados/addresses.txt lru fifo; echo status=$?
+status=0
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make clean && make
+Wed Nov 25 18:09:19 -03 2026
+rm -rf build vm
+mkdir -p build
+cc -D_POSIX_C_SOURCE=200809L -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/args.c -o build/args.o
+cc -D_POSIX_C_SOURCE=200809L -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/input.c -o build/input.o
+cc -D_POSIX_C_SOURCE=200809L -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/main.c -o build/main.o
+cc -D_POSIX_C_SOURCE=200809L -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/policy.c -o build/policy.o
+cc -std=c11 -Wall -Wextra -Wpedantic -O2 build/args.o build/input.o build/main.o build/policy.o -o vm 
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ ./vm dados/addresses.txt lru fifo; echo status=$?
+1000 enderecos lidos de dados/addresses.txt
+status=0
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ ./vm naoexiste.txt lru fifo; echo status=$?
+vm: erro: arquivo de enderecos nao encontrado: naoexiste.txt
+status=1
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ ./vm src lru fifo; echo status=$?
+vm: erro: 'src' nao e um arquivo regular
+status=1
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ ./vm dados/BACKING_STORE.bin lru fifo; echo status=$?
+vm: erro: linha 1: caractere invalido 0x00 (esperado um inteiro decimal sem sinal)
+status=1
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ printf '16916\nabc\n' > /tmp/ruim.txt; ./vm /tmp/ruim.txt lru fifo; echo status=$?
+vm: erro: linha 2: caractere invalido 'a' (esperado um inteiro decimal sem sinal)
+status=1
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ : > /tmp/vazio.txt; ./vm /tmp/vazio.txt lru fifo; echo status=$?
+vm: erro: o arquivo de enderecos nao contem nenhum endereco
+status=1
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make test; echo status=$?
+Wed Nov 25 18:10:03 -03 2026
+sh tests/run.sh
+ok     sem argumentos
+ok     um argumento
+ok     dois argumentos
+ok     quatro argumentos
+ok     caminho vazio
+ok     algoritmo de pagina invalido
+ok     algoritmo da TLB invalido
+ok     algoritmo em maiusculas
+ok     arquivo inexistente
+ok     diretorio no lugar do arquivo
+ok     arquivo sem permissao de leitura
+ok     arquivo vazio
+ok     somente linhas em branco
+ok     texto no lugar do numero
+ok     numero negativo
+ok     sinal positivo
+ok     numero decimal
+ok     dois valores na mesma linha
+ok     hexadecimal
+ok     valor acima de 32 bits
+ok     byte nulo
+ok     numero seguido de texto
+ok     enderecos validos
+ok     espacos, CRLF e linha em branco
+ok     limites de 32 bits
+ok     arquivo do professor
+todos os testes passaram
+status=0
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make test; echo status=$?
+Wed Nov 25 18:10:21 -03 2026
+sh tests/run.sh
+ok     sem argumentos
+ok     um argumento
+ok     dois argumentos
+ok     quatro argumentos
+ok     caminho vazio
+ok     algoritmo de pagina invalido
+ok     algoritmo da TLB invalido
+ok     algoritmo em maiusculas
+ok     arquivo inexistente
+ok     diretorio no lugar do arquivo
+ok     arquivo sem permissao de leitura
+ok     arquivo vazio
+ok     somente linhas em branco
+ok     texto no lugar do numero
+ok     numero negativo
+ok     sinal positivo
+ok     numero decimal
+ok     dois valores na mesma linha
+ok     hexadecimal
+ok     valor acima de 32 bits
+ok     byte nulo
+ok     numero seguido de texto
+ok     enderecos validos
+ok     espacos, CRLF e linha em branco
+ok     limites de 32 bits
+ok     arquivo do professor
+todos os testes passaram
+status=0
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make clean && make
+Wed Nov 25 18:16:51 -03 2026
+rm -rf build vm
+mkdir -p build
+cc -D_POSIX_C_SOURCE=200809L -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/address.c -o build/address.o
+cc -D_POSIX_C_SOURCE=200809L -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/args.c -o build/args.o
+cc -D_POSIX_C_SOURCE=200809L -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/input.c -o build/input.o
+cc -D_POSIX_C_SOURCE=200809L -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/main.c -o build/main.o
+cc -D_POSIX_C_SOURCE=200809L -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/policy.c -o build/policy.o
+cc -std=c11 -Wall -Wextra -Wpedantic -O2 build/address.o build/args.o build/input.o build/main.o build/policy.o -o vm 
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ ./vm dados/addresses.txt lru fifo | head -5
+Virtual address: 16916 Page: 66 Offset: 20
+Virtual address: 62493 Page: 244 Offset: 29
+Virtual address: 30198 Page: 117 Offset: 246
+Virtual address: 53683 Page: 209 Offset: 179
+Virtual address: 40185 Page: 156 Offset: 249
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ printf '0\n256\n65535\n65536\n70000\n4294967295\n' > /tmp/t.txt; ./vm /tmp/t.txt lru fifo
+Virtual address: 0 Page: 0 Offset: 0
+Virtual address: 256 Page: 1 Offset: 0
+Virtual address: 65535 Page: 255 Offset: 255
+Virtual address: 0 Page: 0 Offset: 0
+Virtual address: 4464 Page: 17 Offset: 112
+Virtual address: 65535 Page: 255 Offset: 255
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ ./vm dados/addresses.txt lru fifo | awk '{print $3, $5, $7}' > /tmp/obtido.txt; awk '/^Virtual/ {print $3, int($3 / 256), $8 % 256}' dados/correct.txt > /tmp/esperado.txt; wc -l /tmp/obtido.txt /tmp/esperado.txt; cmp /tmp/obtido.txt /tmp/esperado.txt && echo conferem; echo status=$?
+ 1000 /tmp/obtido.txt
+ 1000 /tmp/esperado.txt
+ 2000 total
+conferem
+status=0
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make test; echo status=$?
+Wed Nov 25 18:17:28 -03 2026
+sh tests/run.sh
+ok     sem argumentos
+ok     um argumento
+ok     dois argumentos
+ok     quatro argumentos
+ok     caminho vazio
+ok     algoritmo de pagina invalido
+ok     algoritmo da TLB invalido
+ok     algoritmo em maiusculas
+ok     arquivo inexistente
+ok     diretorio no lugar do arquivo
+ok     arquivo sem permissao de leitura
+ok     arquivo vazio
+ok     somente linhas em branco
+ok     texto no lugar do numero
+ok     numero negativo
+ok     sinal positivo
+ok     numero decimal
+ok     dois valores na mesma linha
+ok     hexadecimal
+ok     valor acima de 32 bits
+ok     byte nulo
+ok     numero seguido de texto
+ok     enderecos validos
+ok     espacos, CRLF e linha em branco
+ok     limites de 32 bits
+ok     traducao: bordas e mascara de 16 bits
+ok     traducao: pagina e deslocamento conferem com o correct.txt
+todos os testes passaram
+status=0
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; cp dados/BACKING_STORE.bin .; make clean && make
+Wed Nov 25 18:27:47 -03 2026
+rm -rf build vm
+mkdir -p build
+cc -D_POSIX_C_SOURCE=200809L -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/address.c -o build/address.o
+cc -D_POSIX_C_SOURCE=200809L -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/args.c -o build/args.o
+cc -D_POSIX_C_SOURCE=200809L -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/backing_store.c -o build/backing_store.o
+cc -D_POSIX_C_SOURCE=200809L -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/input.c -o build/input.o
+cc -D_POSIX_C_SOURCE=200809L -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/main.c -o build/main.o
+cc -D_POSIX_C_SOURCE=200809L -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/output.c -o build/output.o
+cc -D_POSIX_C_SOURCE=200809L -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/policy.c -o build/policy.o
+cc -D_POSIX_C_SOURCE=200809L -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/vmm.c -o build/vmm.o
+cc -std=c11 -Wall -Wextra -Wpedantic -O2 build/address.o build/args.o build/backing_store.o build/input.o build/main.o build/output.o build/policy.o build/vmm.o -o vm 
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ ./vm dados/addresses.txt lru fifo; echo status=$?
+Number of Translated Addresses = 1000
+Page Faults = 244
+Page Fault Rate = 0.244
+status=0
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ head -5 correct.txt
+Virtual address: 16916 Physical address: 20 Value: 0
+Virtual address: 62493 Physical address: 285 Value: 0
+Virtual address: 30198 Physical address: 758 Value: 29
+Virtual address: 53683 Physical address: 947 Value: 108
+Virtual address: 40185 Physical address: 1273 Value: 0
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ awk '{print int($1 / 256)}' dados/addresses.txt | sort -u | wc -l
+244
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ awk '/^Virtual/ {print $3, $8}' correct.txt > /tmp/obtido.txt; awk '/^Virtual/ {print $3, $10}' dados/correct.txt > /tmp/esperado.txt; wc -l < /tmp/obtido.txt; cmp /tmp/obtido.txt /tmp/esperado.txt && echo valores-iguais
+1000
+valores-iguais
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ limite=$(awk '/^Virtual/ { p = int($3 / 256); if (!(p in v)) { v[p] = 1; if (++n == 129) { print NR - 1; exit } } }' dados/correct.txt); echo limite=$limite; head -n $limite correct.txt | awk '{print $3, $6}' > /tmp/a.txt; head -n $limite dados/correct.txt | awk '{print $3, $8}' > /tmp/b.txt; cmp /tmp/a.txt /tmp/b.txt && echo fisicos-iguais
+limite=171
+fisicos-iguais
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make test; echo status=$?
+Wed Nov 25 18:28:57 -03 2026
+sh tests/run.sh
+ok     sem argumentos
+ok     um argumento
+ok     dois argumentos
+ok     quatro argumentos
+ok     caminho vazio
+ok     algoritmo de pagina invalido
+ok     algoritmo da TLB invalido
+ok     algoritmo em maiusculas
+ok     arquivo inexistente
+ok     diretorio no lugar do arquivo
+ok     arquivo sem permissao de leitura
+ok     arquivo vazio
+ok     somente linhas em branco
+ok     texto no lugar do numero
+ok     numero negativo
+ok     sinal positivo
+ok     numero decimal
+ok     dois valores na mesma linha
+ok     hexadecimal
+ok     valor acima de 32 bits
+ok     byte nulo
+ok     numero seguido de texto
+ok     memoria secundaria ausente
+ok     memoria secundaria com tamanho errado
+ok     memoria secundaria e um diretorio
+ok     arquivo de saida nao pode ser criado
+ok     entrada invalida nao cria o correct.txt
+ok     saida: enderecos validos
+ok     saida: bordas e mascara de 16 bits
+ok     saida: paginas repetidas reaproveitam o frame
+ok     espacos, CRLF e linha em branco
+ok     limites de 32 bits
+ok     professor: page faults iguais ao numero de paginas distintas (244)
+ok     professor: coluna Value confere com o correct.txt
+ok     professor: deslocamento confere com o correct.txt
+ok     professor: enderecos fisicos conferem ate a primeira substituicao (linha 171)
+todos os testes passaram
+status=0
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; awk '/^Virtual/ {print $10}' dados/correct.txt > /tmp/valores.txt; awk -f tests/modelo.awk -v frames=128 -v pagina=lru -v tlb=fifo -v valores=/tmp/valores.txt dados/addresses.txt > /tmp/modelo.txt; wc -l /tmp/modelo.txt dados/correct.txt; cmp /tmp/modelo.txt dados/correct.txt && echo modelo-igual-ao-correct.txt
+Wed Nov 25 18:36:16 -03 2026
+  1005 /tmp/modelo.txt
+  1005 dados/correct.txt
+  2010 total
+modelo-igual-ao-correct.txt
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make clean && make
+Wed Nov 25 18:36:48 -03 2026
+rm -rf build vm
+mkdir -p build
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/address.c -o build/address.o
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/args.c -o build/args.o
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/backing_store.c -o build/backing_store.o
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/input.c -o build/input.o
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/main.c -o build/main.o
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/output.c -o build/output.o
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/policy.c -o build/policy.o
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/vmm.c -o build/vmm.o
+cc -std=c11 -Wall -Wextra -Wpedantic -O2 build/address.o build/args.o build/backing_store.o build/input.o build/main.o build/output.o build/policy.o build/vmm.o -o vm 
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ ./vm dados/addresses.txt fifo fifo; echo status=$?
+Number of Translated Addresses = 1000
+Page Faults = 538
+Page Fault Rate = 0.538
+status=0
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ awk -f tests/modelo.awk -v frames=128 -v pagina=fifo -v tlb=none -v valores=/tmp/valores.txt dados/addresses.txt > /tmp/modelo-fifo.txt; cmp correct.txt /tmp/modelo-fifo.txt && echo saida-igual-ao-modelo
+saida-igual-ao-modelo
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ ./vm dados/addresses.txt lru fifo; echo status=$?
+vm: erro: substituicao de pagina lru ainda nao implementada
+status=1
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make FRAMES=256 | tail -2; ./vm dados/addresses.txt fifo fifo
+Wed Nov 25 18:37:01 -03 2026
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=256u -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/vmm.c -o build/vmm.o
+cc -std=c11 -Wall -Wextra -Wpedantic -O2 build/address.o build/args.o build/backing_store.o build/input.o build/main.o build/output.o build/policy.o build/vmm.o -o vm 
+Number of Translated Addresses = 1000
+Page Faults = 244
+Page Fault Rate = 0.244
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make | tail -2; ./vm dados/addresses.txt fifo fifo
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/vmm.c -o build/vmm.o
+cc -std=c11 -Wall -Wextra -Wpedantic -O2 build/address.o build/args.o build/backing_store.o build/input.o build/main.o build/output.o build/policy.o build/vmm.o -o vm 
+Number of Translated Addresses = 1000
+Page Faults = 538
+Page Fault Rate = 0.538
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make test; echo status=$?
+Wed Nov 25 18:37:44 -03 2026
+FRAMES=128 sh tests/run.sh
+ok     sem argumentos
+ok     um argumento
+ok     dois argumentos
+ok     quatro argumentos
+ok     caminho vazio
+ok     algoritmo de pagina invalido
+ok     algoritmo da TLB invalido
+ok     algoritmo em maiusculas
+ok     arquivo inexistente
+ok     diretorio no lugar do arquivo
+ok     arquivo sem permissao de leitura
+ok     arquivo vazio
+ok     somente linhas em branco
+ok     texto no lugar do numero
+ok     numero negativo
+ok     sinal positivo
+ok     numero decimal
+ok     dois valores na mesma linha
+ok     hexadecimal
+ok     valor acima de 32 bits
+ok     byte nulo
+ok     numero seguido de texto
+ok     memoria secundaria ausente
+ok     memoria secundaria com tamanho errado
+ok     memoria secundaria e um diretorio
+ok     arquivo de saida nao pode ser criado
+ok     entrada invalida nao cria o correct.txt
+ok     saida (fifo): enderecos validos
+ok     saida (fifo): bordas e mascara de 16 bits
+ok     saida (fifo): paginas repetidas reaproveitam o frame
+ok     saida (fifo): substituicao de paginas com 128 frames
+ok     saida (fifo): pagina antiga volta a ser acessada
+ok     espacos, CRLF e linha em branco
+ok     limites de 32 bits
+ok     modelo awk reproduz o correct.txt do professor
+ok     professor (fifo, 128 frames): saida igual ao modelo
+ok     professor (fifo, 128 frames): 538 page faults
+todos os testes passaram
+status=0
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make test FRAMES=256 | tail -12; echo status=$?
+ok     entrada invalida nao cria o correct.txt
+ok     saida (fifo): enderecos validos
+ok     saida (fifo): bordas e mascara de 16 bits
+ok     saida (fifo): paginas repetidas reaproveitam o frame
+ok     saida (fifo): substituicao de paginas com 256 frames
+ok     saida (fifo): pagina antiga volta a ser acessada
+ok     espacos, CRLF e linha em branco
+ok     limites de 32 bits
+ok     modelo awk reproduz o correct.txt do professor
+ok     professor (fifo, 256 frames): saida igual ao modelo
+ok     professor (fifo, 256 frames): 244 page faults
+todos os testes passaram
+status=0
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make; ./vm dados/addresses.txt fifo fifo
+Wed Nov 25 18:38:12 -03 2026
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/address.c -o build/address.o
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/args.c -o build/args.o
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/backing_store.c -o build/backing_store.o
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/input.c -o build/input.o
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/main.c -o build/main.o
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/output.c -o build/output.o
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/policy.c -o build/policy.o
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/vmm.c -o build/vmm.o
+cc -std=c11 -Wall -Wextra -Wpedantic -O2 build/address.o build/args.o build/backing_store.o build/input.o build/main.o build/output.o build/policy.o build/vmm.o -o vm 
+Number of Translated Addresses = 1000
+Page Faults = 538
+Page Fault Rate = 0.538
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make
+Wed Nov 25 18:44:38 -03 2026
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/main.c -o build/main.o
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/output.c -o build/output.o
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/vmm.c -o build/vmm.o
+cc -std=c11 -Wall -Wextra -Wpedantic -O2 build/address.o build/args.o build/backing_store.o build/input.o build/main.o build/output.o build/policy.o build/vmm.o -o vm 
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ ./vm dados/addresses.txt lru fifo; echo status=$?
+Number of Translated Addresses = 1000
+Page Faults = 539
+Page Fault Rate = 0.539
+status=0
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ sed 's/ TLB: [0-9]*//' dados/correct.txt | head -n 1000 > /tmp/ref-sem-tlb.txt; head -n 1000 correct.txt | cmp - /tmp/ref-sem-tlb.txt && echo identico-ao-professor-sem-a-coluna-TLB
+identico-ao-professor-sem-a-coluna-TLB
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ diff <(tail -3 correct.txt) <(sed -n '1001,1003p' dados/correct.txt) && echo resumo-igual
+resumo-igual
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ ./vm dados/addresses.txt fifo fifo | sed -n 2p
+Page Faults = 538
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make test; echo status=$?
+Wed Nov 25 18:45:03 -03 2026
+FRAMES=128 sh tests/run.sh
+ok     sem argumentos
+ok     um argumento
+ok     dois argumentos
+ok     quatro argumentos
+ok     caminho vazio
+ok     algoritmo de pagina invalido
+ok     algoritmo da TLB invalido
+ok     algoritmo em maiusculas
+ok     arquivo inexistente
+ok     diretorio no lugar do arquivo
+ok     arquivo sem permissao de leitura
+ok     arquivo vazio
+ok     somente linhas em branco
+ok     texto no lugar do numero
+ok     numero negativo
+ok     sinal positivo
+ok     numero decimal
+ok     dois valores na mesma linha
+ok     hexadecimal
+ok     valor acima de 32 bits
+ok     byte nulo
+ok     numero seguido de texto
+ok     memoria secundaria ausente
+ok     memoria secundaria com tamanho errado
+ok     memoria secundaria e um diretorio
+ok     arquivo de saida nao pode ser criado
+ok     entrada invalida nao cria o correct.txt
+ok     saida (fifo): enderecos validos
+ok     saida (fifo): bordas e mascara de 16 bits
+ok     saida (fifo): paginas repetidas reaproveitam o frame
+ok     saida (fifo): substituicao de paginas com 128 frames
+ok     saida (fifo): pagina antiga volta a ser acessada
+ok     saida (lru): enderecos validos
+ok     saida (lru): bordas e mascara de 16 bits
+ok     saida (lru): paginas repetidas reaproveitam o frame
+ok     saida (lru): substituicao de paginas com 128 frames
+ok     saida (lru): pagina antiga volta a ser acessada
+ok     espacos, CRLF e linha em branco
+ok     limites de 32 bits
+ok     modelo awk reproduz o correct.txt do professor
+ok     professor (fifo, 128 frames): saida igual ao modelo
+ok     professor (fifo, 128 frames): 538 page faults
+ok     professor (lru, 128 frames): saida igual ao modelo
+ok     professor (lru, 128 frames): 539 page faults
+ok     professor (lru, 128 frames): saida igual ao correct.txt sem a coluna TLB
+todos os testes passaram
+status=0
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make 2>&1 | grep -E "warning|error|-o vm"; ls -l vm
+Wed Nov 25 18:52:31 -03 2026
+cc -std=c11 -Wall -Wextra -Wpedantic -O2 build/address.o build/args.o build/backing_store.o build/input.o build/main.o build/mmu.o build/output.o build/policy.o build/tlb.o build/vmm.o [01;31m[K-o vm[m[K 
+-rwxrwxrwx 1 afreis afreis 22160 Nov 25 18:52 [0m[01;32mvm[0m
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ ./vm dados/addresses.txt lru fifo; echo status=$?
+Number of Translated Addresses = 1000
+Page Faults = 539
+Page Fault Rate = 0.539
+TLB Hits = 54
+TLB Hit Rate = 0.054
+status=0
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ wc -l correct.txt dados/correct.txt; cmp correct.txt dados/correct.txt && echo identico-ao-correct.txt-do-professor
+  1005 correct.txt
+  1005 dados/correct.txt
+  2010 total
+identico-ao-correct.txt-do-professor
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make test > /tmp/t1.txt; echo status=$?; grep -c "^ok" /tmp/t1.txt; grep -E "FALHA|passaram|identico" /tmp/t1.txt
+Wed Nov 25 18:53:19 -03 2026
+make: *** [Makefile:32: test] Error 1
+status=2
+61
+[01;31m[KFALHA[m[K  saida (pagina fifo, TLB fifo): bordas e mascara de 16 bits (status=0)
+[01;31m[KFALHA[m[K  saida (pagina fifo, TLB fifo): paginas repetidas (status=0)
+[01;31m[KFALHA[m[K  saida (pagina fifo, TLB fifo): pagina que perde o frame sai da TLB (status=0)
+[01;31m[KFALHA[m[K  saida (pagina lru, TLB fifo): bordas e mascara de 16 bits (status=0)
+[01;31m[KFALHA[m[K  saida (pagina lru, TLB fifo): paginas repetidas (status=0)
+[01;31m[KFALHA[m[K  saida (pagina lru, TLB fifo): pagina que perde o frame sai da TLB (status=0)
+ok     professor (pagina lru, TLB fifo, 128 frames): correct.txt [01;31m[Kidentico[m[K ao do professor
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; R=/mnt/d/Repositorios/CESAR/memoria-virtual; mkdir -p /tmp/wk && cd /tmp/wk && LC_ALL=C awk 'BEGIN { for (i = 0; i < 65536; i++) printf "%c", (int(i / 256) + i) % 256 }' > BACKING_STORE.bin && printf '100\n100\n356\n100\n300\n356\n65280\n' > rep.txt && $R/vm rep.txt fifo fifo > /dev/null; awk -f $R/tests/modelo.awk -v frames=128 -v pagina=fifo -v tlb=fifo rep.txt > modelo.txt; diff correct.txt modelo.txt; cd $R
+Wed Nov 25 18:53:49 -03 2026
+2,7c2,7
+< Virtual address: 100 TLB: 0 Physical address: 100 Value: 100
+< Virtual address: 356 TLB: 1 Physical address: 356 Value: 101
+< Virtual address: 100 TLB: 0 Physical address: 100 Value: 100
+< Virtual address: 300 TLB: 1 Physical address: 300 Value: 45
+< Virtual address: 356 TLB: 1 Physical address: 356 Value: 101
+< Virtual address: 65280 TLB: 2 Physical address: 512 Value: -1
+---
+> Virtual address: 100 TLB: 1 Physical address: 100 Value: 100
+> Virtual address: 356 TLB: 2 Physical address: 356 Value: 101
+> Virtual address: 100 TLB: 1 Physical address: 100 Value: 100
+> Virtual address: 300 TLB: 2 Physical address: 300 Value: 45
+> Virtual address: 356 TLB: 2 Physical address: 356 Value: 101
+> Virtual address: 65280 TLB: 3 Physical address: 512 Value: -1
+11,12c11,12
+< TLB Hits = 4
+< TLB Hit Rate = 0.571
+---
+> TLB Hits = 3
+> TLB Hit Rate = 0.429
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; cd /tmp/wk; awk -f $R/tests/modelo.awk -v frames=128 -v pagina=fifo -v tlb=fifo rep.txt > modelo.txt; diff correct.txt modelo.txt && echo programa-igual-ao-modelo; cd $R
+Wed Nov 25 18:54:12 -03 2026
+programa-igual-ao-modelo
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make test > /tmp/t1.txt; echo status=$?; grep -c "^ok" /tmp/t1.txt; grep -E "FALHA|passaram|identico" /tmp/t1.txt
+status=0
+67
+ok     professor (pagina lru, TLB fifo, 128 frames): correct.txt [01;31m[Kidentico[m[K ao do professor
+todos os testes [01;31m[Kpassaram[m[K
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make test TLB=off > /tmp/t2.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/t2.txt; grep -E "FALHA|passaram|sem a coluna" /tmp/t2.txt
+status=0
+49
+ok     professor (pagina lru, sem TLB, 128 frames): saida igual ao correct.txt [01;31m[Ksem a coluna[m[K TLB
+todos os testes [01;31m[Kpassaram[m[K
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make test FRAMES=256 > /tmp/t3.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/t3.txt; grep -E "FALHA|passaram" /tmp/t3.txt
+status=0
+66
+todos os testes [01;31m[Kpassaram[m[K
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make test FRAMES=256 TLB=off > /tmp/t4.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/t4.txt; grep -E "FALHA|passaram" /tmp/t4.txt
+status=0
+48
+todos os testes [01;31m[Kpassaram[m[K
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make > /dev/null 2>&1; ./vm dados/addresses.txt lru fifo > /dev/null; cmp correct.txt dados/correct.txt && echo identico-ao-correct.txt-do-professor
+identico-ao-correct.txt-do-professor
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make 2>&1 | grep -E "warning|error|-o vm"; ls -l vm
+Wed Nov 25 19:39:15 -03 2026
+cc -std=c11 -Wall -Wextra -Wpedantic -O2 build/address.o build/args.o build/backing_store.o build/input.o build/main.o build/mmu.o build/output.o build/policy.o build/tlb.o build/vmm.o [01;31m[K-o vm[m[K  -pthread
+-rwxrwxrwx 1 afreis afreis 26432 Nov 25 19:39 [0m[01;32mvm[0m
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ time ./vm dados/addresses.txt lru fifo; cmp correct.txt dados/correct.txt && echo identico-ao-correct.txt-do-professor
+Number of Translated Addresses = 1000
+Page Faults = 539
+Page Fault Rate = 0.539
+TLB Hits = 54
+TLB Hit Rate = 0.054
+
+real	0m1.603s
+user	0m0.033s
+sys	0m1.110s
+identico-ao-correct.txt-do-professor
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make THREADS=off 2>&1 | grep -E "warning|error"; time ./vm dados/addresses.txt lru fifo > /dev/null; cmp correct.txt dados/correct.txt && echo identico-ao-correct.txt-do-professor
+
+real	0m0.103s
+user	0m0.000s
+sys	0m0.021s
+identico-ao-correct.txt-do-professor
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make 2>&1 | grep -E "warning|error"; ./vm dados/addresses.txt lru fifo > /dev/null; cmp correct.txt dados/correct.txt && echo identico-ao-correct.txt-do-professor
+identico-ao-correct.txt-do-professor
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make test > /tmp/t1.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/t1.txt; grep -E "FALHA|threads criadas|identico|passaram" /tmp/t1.txt
+Wed Nov 25 19:39:55 -03 2026
+status=0
+68
+ok     TLB: 1440 [01;31m[Kthreads criadas[m[K para 90 enderecos (THREADS=on)
+ok     professor (pagina lru, TLB fifo, 128 frames): correct.txt [01;31m[Kidentico[m[K ao do professor
+todos os testes [01;31m[Kpassaram[m[K
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make test THREADS=off > /tmp/t2.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/t2.txt; grep -E "FALHA|threads criadas|identico|passaram" /tmp/t2.txt
+status=0
+68
+ok     TLB: 0 [01;31m[Kthreads criadas[m[K para 90 enderecos (THREADS=off)
+ok     professor (pagina lru, TLB fifo, 128 frames): correct.txt [01;31m[Kidentico[m[K ao do professor
+todos os testes [01;31m[Kpassaram[m[K
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make tsan > /tmp/t3.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/t3.txt; grep -E "FALHA|ThreadSanitizer|WARNING|passaram|FATAL" /tmp/t3.txt | head -8; date
+Wed Nov 25 19:40:12 -03 2026
+status=0
+67
+todos os testes passaram
+Wed Nov 25 19:40:35 -03 2026
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make test > /tmp/t1.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/t1.txt; grep -E "FALHA|threads|identico|passaram" /tmp/t1.txt
+Wed Nov 25 19:41:10 -03 2026
+status=0
+69
+ok     TLB: 1440 [01;31m[Kthreads[m[K criadas para 90 enderecos (THREADS=on)
+ok     TLB: sem conseguir criar [01;31m[Kthreads[m[K, a busca continua correta
+ok     professor (pagina lru, TLB fifo, 128 frames): correct.txt [01;31m[Kidentico[m[K ao do professor
+todos os testes [01;31m[Kpassaram[m[K
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make clean > /dev/null && make FRAMES=256 TLB=off > /dev/null 2>&1 && ./vm dados/addresses.txt fifo fifo
+Wed Nov 25 19:43:02 -03 2026
+Number of Translated Addresses = 1000
+Page Faults = 244
+Page Fault Rate = 0.244
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make clean > /dev/null && make TLB=off > /dev/null 2>&1 && ./vm dados/addresses.txt fifo fifo
+Number of Translated Addresses = 1000
+Page Faults = 538
+Page Fault Rate = 0.538
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ ./vm dados/addresses.txt lru fifo
+Number of Translated Addresses = 1000
+Page Faults = 539
+Page Fault Rate = 0.539
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make clean > /dev/null && make THREADS=off > /dev/null 2>&1 && ./vm dados/addresses.txt lru fifo; cmp correct.txt dados/correct.txt && echo identico-ao-professor
+Number of Translated Addresses = 1000
+Page Faults = 539
+Page Fault Rate = 0.539
+TLB Hits = 54
+TLB Hit Rate = 0.054
+identico-ao-professor
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ ./vm dados/addresses.txt fifo lru
+Number of Translated Addresses = 1000
+Page Faults = 538
+Page Fault Rate = 0.538
+TLB Hits = 55
+TLB Hit Rate = 0.055
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make clean > /dev/null && make > /dev/null 2>&1 && ./vm dados/addresses.txt lru fifo; cmp correct.txt dados/correct.txt && echo identico-ao-professor
+Number of Translated Addresses = 1000
+Page Faults = 539
+Page Fault Rate = 0.539
+TLB Hits = 54
+TLB Hit Rate = 0.054
+identico-ao-professor
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ ./vm dados/addresses.txt fifo lru
+Number of Translated Addresses = 1000
+Page Faults = 538
+Page Fault Rate = 0.538
+TLB Hits = 55
+TLB Hit Rate = 0.055
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make test > /tmp/c1.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/c1.txt; grep -c FALHA /tmp/c1.txt; tail -1 /tmp/c1.txt
+status=0
+69
+0
+todos os testes passaram
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make test THREADS=off > /tmp/c2.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/c2.txt; grep -c FALHA /tmp/c2.txt; tail -1 /tmp/c2.txt
+status=0
+69
+0
+todos os testes passaram
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make test TLB=off > /tmp/c3.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/c3.txt; grep -c FALHA /tmp/c3.txt; tail -1 /tmp/c3.txt
+status=0
+49
+0
+todos os testes passaram
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make test FRAMES=256 > /tmp/c4.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/c4.txt; grep -c FALHA /tmp/c4.txt; tail -1 /tmp/c4.txt
+status=0
+68
+0
+todos os testes passaram
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make test FRAMES=256 TLB=off > /tmp/c5.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/c5.txt; grep -c FALHA /tmp/c5.txt; tail -1 /tmp/c5.txt
+status=0
+48
+0
+todos os testes passaram
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make clean > /dev/null && make > /dev/null 2>&1; ls -l vm
+-rwxrwxrwx 1 afreis afreis 26432 Nov 25 19:43 [0m[01;32mvm[0m
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make test > /tmp/e8a.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/e8a.txt; tail -2 /tmp/e8a.txt
+Wed Nov 25 19:52:41 -03 2026
+status=0
+69
+ok     professor (pagina lru, TLB lru, 128 frames): 539 page faults
+todos os testes passaram
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make sanitize > /tmp/e8b.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/e8b.txt; grep -cE "runtime error|ERROR: AddressSanitizer|LeakSanitizer" /tmp/e8b.txt; grep -E "FALHA|aviso" /tmp/e8b.txt | head -5; tail -2 /tmp/e8b.txt
+status=0
+67
+0
+rm -rf build vm
+make[1]: Leaving directory '/mnt/d/Repositorios/CESAR/memoria-virtual'
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ R=$PWD; rm -rf /tmp/semdados && mkdir /tmp/semdados && cp -r src tests Makefile /tmp/semdados/ && cd /tmp/semdados && make test > /tmp/e8c.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/e8c.txt; tail -2 /tmp/e8c.txt; cd $R
+status=0
+59
+aviso: testes pulados: testes do professor (addresses.txt, correct.txt e BACKING_STORE.bin ausentes em dados/);
+os testes executados passaram
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make > /dev/null 2>&1; ls -l vm
+-rwxrwxrwx 1 afreis afreis 26432 Nov 25 19:53 [0m[01;32mvm[0m
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make mutantes
+Wed Nov 25 19:53:34 -03 2026
+sh tests/mutantes.sh
+morto  FIFO de pagina nao avanca a fila (10 testes falharam)
+morto  pagina substituida continua marcada como presente (19 testes falharam)
+morto  LRU de pagina escolhe o frame mais recente (11 testes falharam)
+morto  LRU de pagina se comporta como FIFO (11 testes falharam)
+morto  page fault nao e contado (38 testes falharam)
+morto  le a pagina errada da memoria secundaria (34 testes falharam)
+morto  endereco fisico com 7 bits de deslocamento (34 testes falharam)
+morto  pagina que perde o frame continua na TLB (5 testes falharam)
+morto  hit da TLB nao atualiza o uso do frame no LRU (6 testes falharam)
+morto  hit da TLB nao e contado (28 testes falharam)
+morto  LRU da TLB escolhe a entrada mais recente (10 testes falharam)
+morto  FIFO da TLB nao avanca (18 testes falharam)
+morto  LRU da TLB ignora entradas livres (4 testes falharam)
+morto  cada thread olha a entrada vizinha (31 testes falharam)
+morto  busca sequencial no lugar das threads (1 testes falharam)
+morto  sem fallback quando a thread nao e criada (1 testes falharam)
+morto  dois valores na mesma linha aceitos (1 testes falharam)
+morto  valor acima de 32 bits aceito (1 testes falharam)
+morto  threads sem pthread_join (ThreadSanitizer) (39 testes falharam)
+19 mutantes, 0 com problema
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make test FRAMES=1 > /tmp/f1.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/f1.txt; grep -c "^FALHA" /tmp/f1.txt; grep -E "^FALHA" /tmp/f1.txt | head -3
+Wed Nov 25 19:56:15 -03 2026
+status=2
+63
+1
+FALHA  TLB: 2832 threads criadas para 90 enderecos, esperadas 1440 (THREADS=on)
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make test FRAMES=4 > /tmp/f4.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/f4.txt; grep -c "^FALHA" /tmp/f4.txt; grep -E "^FALHA" /tmp/f4.txt | head -3
+Wed Nov 25 19:56:25 -03 2026
+status=2
+63
+1
+FALHA  TLB: 2720 threads criadas para 90 enderecos, esperadas 1440 (THREADS=on)
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make test FRAMES=16 > /tmp/f16.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/f16.txt; grep -c "^FALHA" /tmp/f16.txt; grep -E "^FALHA" /tmp/f16.txt | head -3
+Wed Nov 25 19:56:36 -03 2026
+status=2
+63
+1
+FALHA  TLB: 1760 threads criadas para 90 enderecos, esperadas 1440 (THREADS=on)
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make test FRAMES=300 > /tmp/f300.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/f300.txt; grep -c "^FALHA" /tmp/f300.txt; grep -E "^FALHA" /tmp/f300.txt | head -3
+Wed Nov 25 19:56:47 -03 2026
+status=0
+64
+0
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make > /dev/null 2>&1; ls -l vm
+-rwxrwxrwx 1 afreis afreis 26432 Nov 25 19:56 [0m[01;32mvm[0m
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make test FRAMES=128 > /tmp/g128.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/g128.txt; grep -c "^FALHA" /tmp/g128.txt; tail -1 /tmp/g128.txt
+Wed Nov 25 19:57:30 -03 2026
+status=0
+69
+0
+todos os testes passaram
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make test FRAMES=1 > /tmp/g1.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/g1.txt; grep -c "^FALHA" /tmp/g1.txt; tail -1 /tmp/g1.txt
+Wed Nov 25 19:57:37 -03 2026
+status=0
+64
+0
+todos os testes passaram
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make test FRAMES=4 > /tmp/g4.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/g4.txt; grep -c "^FALHA" /tmp/g4.txt; tail -1 /tmp/g4.txt
+Wed Nov 25 19:57:44 -03 2026
+status=0
+64
+0
+todos os testes passaram
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make test FRAMES=16 > /tmp/g16.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/g16.txt; grep -c "^FALHA" /tmp/g16.txt; tail -1 /tmp/g16.txt
+Wed Nov 25 19:57:50 -03 2026
+status=0
+64
+0
+todos os testes passaram
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; make test FRAMES=300 > /tmp/g300.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/g300.txt; grep -c "^FALHA" /tmp/g300.txt; tail -1 /tmp/g300.txt
+Wed Nov 25 19:57:57 -03 2026
+status=0
+64
+0
+todos os testes passaram
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make FRAMES=128 > /dev/null 2>&1; date; make mutantes
+Wed Nov 25 19:58:06 -03 2026
+sh tests/mutantes.sh
+morto  FIFO de pagina nao avanca a fila (10 testes falharam)
+morto  pagina substituida continua marcada como presente (19 testes falharam)
+morto  LRU de pagina escolhe o frame mais recente (11 testes falharam)
+morto  LRU de pagina se comporta como FIFO (11 testes falharam)
+morto  page fault nao e contado (38 testes falharam)
+morto  le a pagina errada da memoria secundaria (34 testes falharam)
+morto  endereco fisico com 7 bits de deslocamento (34 testes falharam)
+morto  pagina que perde o frame continua na TLB (5 testes falharam)
+morto  pagina que perde o frame continua na TLB, com LRU de pagina e 4 frames (6 testes falharam)
+morto  hit da TLB nao atualiza o uso do frame no LRU (6 testes falharam)
+morto  hit da TLB nao e contado (28 testes falharam)
+morto  LRU da TLB escolhe a entrada mais recente (10 testes falharam)
+morto  FIFO da TLB nao avanca (18 testes falharam)
+morto  LRU da TLB ignora entradas livres (4 testes falharam)
+morto  cada thread olha a entrada vizinha (29 testes falharam)
+morto  busca sequencial no lugar das threads (1 testes falharam)
+morto  sem fallback quando a thread nao e criada (1 testes falharam)
+morto  dois valores na mesma linha aceitos (1 testes falharam)
+morto  valor acima de 32 bits aceito (1 testes falharam)
+morto  threads sem pthread_join (ThreadSanitizer) (39 testes falharam)
+20 mutantes, 0 com problema
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ date; whoami; pwd; make clean && make
+Wed Nov 25 20:27:29 -03 2026
+afreis
+/mnt/d/Repositorios/CESAR/memoria-virtual
+rm -rf build vm
+mkdir -p build
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -DUSE_TLB=1 -DUSE_THREADS=1 -pthread -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/address.c -o build/address.o
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -DUSE_TLB=1 -DUSE_THREADS=1 -pthread -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/args.c -o build/args.o
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -DUSE_TLB=1 -DUSE_THREADS=1 -pthread -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/backing_store.c -o build/backing_store.o
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -DUSE_TLB=1 -DUSE_THREADS=1 -pthread -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/input.c -o build/input.o
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -DUSE_TLB=1 -DUSE_THREADS=1 -pthread -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/main.c -o build/main.o
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -DUSE_TLB=1 -DUSE_THREADS=1 -pthread -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/mmu.c -o build/mmu.o
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -DUSE_TLB=1 -DUSE_THREADS=1 -pthread -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/output.c -o build/output.o
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -DUSE_TLB=1 -DUSE_THREADS=1 -pthread -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/policy.c -o build/policy.o
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -DUSE_TLB=1 -DUSE_THREADS=1 -pthread -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/tlb.c -o build/tlb.o
+cc -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=128u -DUSE_TLB=1 -DUSE_THREADS=1 -pthread -std=c11 -Wall -Wextra -Wpedantic -O2 -MMD -MP -c src/vmm.c -o build/vmm.o
+cc -std=c11 -Wall -Wextra -Wpedantic -O2 build/address.o build/args.o build/backing_store.o build/input.o build/main.o build/mmu.o build/output.o build/policy.o build/tlb.o build/vmm.o -o vm  -pthread
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ rm -f correct.txt; ./vm dados/addresses.txt lru fifo && cmp correct.txt dados/correct.txt && echo identico-ao-correct.txt-do-professor
+Number of Translated Addresses = 1000
+Page Faults = 539
+Page Fault Rate = 0.539
+TLB Hits = 54
+TLB Hit Rate = 0.054
+identico-ao-correct.txt-do-professor
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make test
+FRAMES=128 TLB=on THREADS=on SANITIZED= sh tests/run.sh
+ok     sem argumentos
+ok     um argumento
+ok     dois argumentos
+ok     quatro argumentos
+ok     caminho vazio
+ok     algoritmo de pagina invalido
+ok     algoritmo da TLB invalido
+ok     algoritmo em maiusculas
+ok     arquivo inexistente
+ok     diretorio no lugar do arquivo
+ok     arquivo sem permissao de leitura
+ok     arquivo vazio
+ok     somente linhas em branco
+ok     texto no lugar do numero
+ok     numero negativo
+ok     sinal positivo
+ok     numero decimal
+ok     dois valores na mesma linha
+ok     hexadecimal
+ok     valor acima de 32 bits
+ok     byte nulo
+ok     numero seguido de texto
+ok     memoria secundaria ausente
+ok     memoria secundaria com tamanho errado
+ok     memoria secundaria e um diretorio
+ok     arquivo de saida nao pode ser criado
+ok     entrada invalida nao cria o correct.txt
+ok     saida (pagina fifo, TLB fifo): enderecos validos
+ok     saida (pagina fifo, TLB fifo): bordas e mascara de 16 bits
+ok     saida (pagina fifo, TLB fifo): paginas repetidas
+ok     saida (pagina fifo, TLB fifo): substituicao com 128 frames
+ok     saida (pagina fifo, TLB fifo): pagina antiga volta a ser acessada
+ok     saida (pagina fifo, TLB fifo): preenchimento e giro da TLB
+ok     saida (pagina fifo, TLB fifo): pagina que perde o frame sai da TLB
+ok     saida (pagina fifo, TLB lru): enderecos validos
+ok     saida (pagina fifo, TLB lru): bordas e mascara de 16 bits
+ok     saida (pagina fifo, TLB lru): paginas repetidas
+ok     saida (pagina fifo, TLB lru): substituicao com 128 frames
+ok     saida (pagina fifo, TLB lru): pagina antiga volta a ser acessada
+ok     saida (pagina fifo, TLB lru): preenchimento e giro da TLB
+ok     saida (pagina fifo, TLB lru): pagina que perde o frame sai da TLB
+ok     saida (pagina lru, TLB fifo): enderecos validos
+ok     saida (pagina lru, TLB fifo): bordas e mascara de 16 bits
+ok     saida (pagina lru, TLB fifo): paginas repetidas
+ok     saida (pagina lru, TLB fifo): substituicao com 128 frames
+ok     saida (pagina lru, TLB fifo): pagina antiga volta a ser acessada
+ok     saida (pagina lru, TLB fifo): preenchimento e giro da TLB
+ok     saida (pagina lru, TLB fifo): pagina que perde o frame sai da TLB
+ok     saida (pagina lru, TLB lru): enderecos validos
+ok     saida (pagina lru, TLB lru): bordas e mascara de 16 bits
+ok     saida (pagina lru, TLB lru): paginas repetidas
+ok     saida (pagina lru, TLB lru): substituicao com 128 frames
+ok     saida (pagina lru, TLB lru): pagina antiga volta a ser acessada
+ok     saida (pagina lru, TLB lru): preenchimento e giro da TLB
+ok     saida (pagina lru, TLB lru): pagina que perde o frame sai da TLB
+ok     TLB: 1440 threads criadas para 90 enderecos (THREADS=on)
+ok     TLB: sem conseguir criar threads, a busca continua correta
+ok     espacos, CRLF e linha em branco
+ok     limites de 32 bits
+ok     modelo awk reproduz o correct.txt do professor
+ok     professor (pagina fifo, TLB fifo, 128 frames): saida igual ao modelo
+ok     professor (pagina fifo, TLB fifo, 128 frames): 538 page faults
+ok     professor (pagina fifo, TLB lru, 128 frames): saida igual ao modelo
+ok     professor (pagina fifo, TLB lru, 128 frames): 538 page faults
+ok     professor (pagina lru, TLB fifo, 128 frames): saida igual ao modelo
+ok     professor (pagina lru, TLB fifo, 128 frames): 539 page faults
+ok     professor (pagina lru, TLB fifo, 128 frames): correct.txt identico ao do professor
+ok     professor (pagina lru, TLB lru, 128 frames): saida igual ao modelo
+ok     professor (pagina lru, TLB lru, 128 frames): 539 page faults
+todos os testes passaram
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make test THREADS=off > /tmp/h1.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/h1.txt; grep -c "^FALHA" /tmp/h1.txt; tail -1 /tmp/h1.txt
+status=0
+69
+0
+todos os testes passaram
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make test TLB=off > /tmp/h2.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/h2.txt; grep -c "^FALHA" /tmp/h2.txt; tail -1 /tmp/h2.txt
+status=0
+49
+0
+todos os testes passaram
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make test FRAMES=256 > /tmp/h3.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/h3.txt; grep -c "^FALHA" /tmp/h3.txt; tail -1 /tmp/h3.txt
+status=0
+68
+0
+todos os testes passaram
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make test FRAMES=256 TLB=off > /tmp/h4.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/h4.txt; grep -c "^FALHA" /tmp/h4.txt; tail -1 /tmp/h4.txt
+status=0
+48
+0
+todos os testes passaram
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make test FRAMES=4 > /tmp/h5.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/h5.txt; grep -c "^FALHA" /tmp/h5.txt; tail -1 /tmp/h5.txt
+status=0
+64
+0
+todos os testes passaram
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make > /dev/null 2>&1; ls -l vm
+-rwxrwxrwx 1 afreis afreis 26432 Nov 25 20:28 [0m[01;32mvm[0m
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make tsan > /tmp/k1.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/k1.txt; grep -c "ThreadSanitizer" /tmp/k1.txt; grep -c "^FALHA" /tmp/k1.txt; grep -B1 "^make\[1\]: Leaving" /tmp/k1.txt | head -1
+status=0
+67
+0
+0
+rm -rf build vm
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make sanitize > /tmp/k2.txt 2>&1; echo status=$?; grep -c "^ok" /tmp/k2.txt; grep -cE "runtime error|AddressSanitizer|LeakSanitizer" /tmp/k2.txt; grep -c "^FALHA" /tmp/k2.txt
+status=0
+67
+0
+0
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ make > /dev/null 2>&1; date; make mutantes
+Wed Nov 25 20:28:57 -03 2026
+sh tests/mutantes.sh
+morto  FIFO de pagina nao avanca a fila (10 testes falharam)
+morto  pagina substituida continua marcada como presente (19 testes falharam)
+morto  LRU de pagina escolhe o frame mais recente (11 testes falharam)
+morto  LRU de pagina se comporta como FIFO (11 testes falharam)
+morto  page fault nao e contado (38 testes falharam)
+morto  le a pagina errada da memoria secundaria (34 testes falharam)
+morto  endereco fisico com 7 bits de deslocamento (34 testes falharam)
+morto  pagina que perde o frame continua na TLB (5 testes falharam)
+morto  pagina que perde o frame continua na TLB, com LRU de pagina e 4 frames (6 testes falharam)
+morto  hit da TLB nao atualiza o uso do frame no LRU (6 testes falharam)
+morto  hit da TLB nao e contado (28 testes falharam)
+morto  LRU da TLB escolhe a entrada mais recente (10 testes falharam)
+morto  FIFO da TLB nao avanca (18 testes falharam)
+morto  LRU da TLB ignora entradas livres (4 testes falharam)
+morto  cada thread olha a entrada vizinha (29 testes falharam)
+morto  busca sequencial no lugar das threads (1 testes falharam)
+morto  sem fallback quando a thread nao e criada (1 testes falharam)
+morto  dois valores na mesma linha aceitos (1 testes falharam)
+morto  valor acima de 32 bits aceito (1 testes falharam)
+morto  threads sem pthread_join (ThreadSanitizer) (39 testes falharam)
+20 mutantes, 0 com problema
+afreis@G1984O:/mnt/d/Repositorios/CESAR/memoria-virtual$ exit
+exit
+
+Script done on 2026-11-25 20:31:32-03:00 [COMMAND_EXIT_CODE="0"]
