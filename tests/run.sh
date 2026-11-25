@@ -3,7 +3,7 @@
 root=$(pwd)
 VM=${VM:-$root/vm}
 FRAMES=${FRAMES:-128}
-POLICIES="fifo"
+POLICIES="fifo lru"
 dados=$root/dados
 modelo=$root/tests/modelo.awk
 status=0
@@ -195,6 +195,15 @@ if [ -f "$dados/addresses.txt" ] && [ -f "$dados/correct.txt" ] && [ -f "$dados/
                 pass "professor ($policy, $FRAMES frames): $faltas page faults"
             else
                 fail "professor ($policy, $FRAMES frames): page faults diferentes de $faltas"
+            fi
+        fi
+        if [ "$FRAMES-$policy" = "128-lru" ]; then
+            sed 's/ TLB: [0-9]*//' "$dados/correct.txt" | head -n 1000 > "$tmp/ref-sem-tlb.txt"
+            sed -n '1001,1003p' "$dados/correct.txt" >> "$tmp/ref-sem-tlb.txt"
+            if cmp -s "$tmp/prof/correct.txt" "$tmp/ref-sem-tlb.txt"; then
+                pass "professor (lru, 128 frames): saida igual ao correct.txt sem a coluna TLB"
+            else
+                fail "professor (lru, 128 frames): saida difere do correct.txt sem a coluna TLB"
             fi
         fi
     done
