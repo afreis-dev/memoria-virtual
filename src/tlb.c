@@ -1,5 +1,68 @@
 #include "tlb.h"
 
+#include <pthread.h>
+
+typedef struct {
+    const TlbEntry *entry;
+    uint8_t page;
+    int match;
+} SearchTask;
+
+/** Corpo de cada thread: compara a pagina buscada com a entrada que lhe coube. */
+static void *search_entry(void *arg)
+{
+    SearchTask *task = arg;
+
+    task->match = task->entry->page == task->page;
+    return NULL;
+}
+
+/** Busca sequencial: percorre as entradas em ordem e devolve a primeira que casa. */
+static int find_sequential(const Tlb *tlb, uint8_t page)
+{
+    size_t i;
+
+    for (i = 0; i < TLB_SIZE; i++) {
+        if (tlb->entries[i].page == page) {
+            return (int)i;
+        }
+    }
+    return -1;
+}
+
+/**
+ * Busca paralela: uma thread por entrada. Depois de juntar todas, devolve a
+ * primeira entrada que casou. Se uma thread nao puder ser criada, a comparacao
+ * daquela entrada e feita pela propria thread chamadora.
+ */
+static int find_threaded(const Tlb *tlb, uint8_t page)
+{
+    pthread_t threads[TLB_SIZE];
+    SearchTask tasks[TLB_SIZE];
+    int started[TLB_SIZE];
+    int slot = -1;
+    size_t i;
+
+    for (i = 0; i < TLB_SIZE; i++) {
+        tasks[i].entry = &tlb->entries[i];
+        tasks[i].page = page;
+        tasks[i].match = 0;
+        started[i] = pthread_create(&threads[i], NULL, search_entry, &tasks[i]) == 0;
+        if (!started[i]) {
+            search_entry(&tasks[i]);
+        }
+    }
+    for (i = 0; i < TLB_SIZE; i++) {
+        if (started[i]) {
+            pthread_join(threads[i], NULL);
+        }
+        if (tasks[i].match && slot < 0) {
+            slot = (int)i;
+        }
+    }
+    return slot;
+}
+
 /**
  * Escolhe a entrada a ser ocupada. No FIFO percorre as entradas em ordem
  * circular. No LRU usa a primeira entrada livre e, sem nenhuma, a de uso mais antigo.
@@ -44,14 +107,7 @@ void tlb_init(Tlb *tlb, Policy policy)
 
 int tlb_find(const Tlb *tlb, uint8_t page)
 {
-    size_t i;
-
-    for (i = 0; i < TLB_SIZE; i++) {
-        if (tlb->entries[i].page == page) {
-            return (int)i;
-        }
-    }
-    return -1;
+    return USE_THREADS ? find_threaded(tlb, page) : find_sequential(tlb, page);
 }
 
 void tlb_hit(Tlb *tlb, int slot, size_t now)
