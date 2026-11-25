@@ -6,6 +6,7 @@ FRAMES=${FRAMES:-128}
 TLB=${TLB:-on}
 THREADS=${THREADS:-on}
 SANITIZED=${SANITIZED:-}
+pulados=
 POLICIES="fifo lru"
 if [ "$TLB" = off ]; then
     TLB_POLICIES="fifo"
@@ -164,6 +165,8 @@ if [ "$(id -u)" -ne 0 ]; then
     : > "$tmp/sem-permissao.txt"
     chmod 000 "$tmp/sem-permissao.txt"
     expect_error "arquivo sem permissao de leitura" "nao foi possivel abrir" "$VM" "$tmp/sem-permissao.txt" lru fifo
+else
+    pulados="$pulados permissao de leitura (usuario root);"
 fi
 expect_error "arquivo vazio" "nao contem nenhum endereco" "$VM" "$tmp/vazio.txt" lru fifo
 expect_error "somente linhas em branco" "nao contem nenhum endereco" "$VM" "$tmp/branco.txt" lru fifo
@@ -203,7 +206,9 @@ for policy in $POLICIES; do
     done
 done
 if [ "$TLB" != off ] && [ -z "$SANITIZED" ]; then
-    if cc -shared -fPIC -o "$tmp/conta_threads.so" "$root/tests/conta_threads.c" -ldl 2> /dev/null; then
+    if [ "$(uname -s)" != Linux ]; then
+        pulados="$pulados contagem de threads (so Linux);"
+    elif cc -shared -fPIC -o "$tmp/conta_threads.so" "$root/tests/conta_threads.c" -ldl 2> /dev/null; then
         enderecos=$(grep -c . "$tmp/tlb.txt")
         if [ "$THREADS" = off ]; then
             esperadas=0
@@ -288,9 +293,18 @@ if [ -f "$dados/addresses.txt" ] && [ -f "$dados/correct.txt" ] && [ -f "$dados/
             fi
         done
     done
+else
+    pulados="$pulados testes do professor (addresses.txt, correct.txt e BACKING_STORE.bin ausentes em dados/);"
 fi
 
+if [ -n "$pulados" ]; then
+    printf 'aviso: testes pulados:%s\n' "$pulados"
+fi
 if [ "$status" -eq 0 ]; then
-    printf 'todos os testes passaram\n'
+    if [ -n "$pulados" ]; then
+        printf 'os testes executados passaram\n'
+    else
+        printf 'todos os testes passaram\n'
+    fi
 fi
 exit "$status"

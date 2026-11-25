@@ -10,12 +10,13 @@ LDLIBS = -pthread
 DEPFLAGS = -MMD -MP
 BUILD_CONFIG = $(CPPFLAGS) $(CFLAGS) $(LDFLAGS)
 TSAN_FLAGS = -std=c11 -Wall -Wextra -Wpedantic -g -O1 -fno-omit-frame-pointer -fsanitize=thread
+ASAN_FLAGS = -std=c11 -Wall -Wextra -Wpedantic -g -O1 -fno-omit-frame-pointer -fsanitize=address,undefined
 
 TARGET = vm
 SOURCES = $(wildcard src/*.c)
 OBJECTS = $(patsubst src/%.c,build/%.o,$(SOURCES))
 
-.PHONY: all clean test tsan force
+.PHONY: all clean test tsan sanitize mutantes force
 
 all: $(TARGET)
 
@@ -39,6 +40,13 @@ test: $(TARGET)
 tsan:
 	$(MAKE) clean
 	$(MAKE) CFLAGS="$(TSAN_FLAGS)" LDFLAGS="-fsanitize=thread" SANITIZED=thread test; status=$$?; $(MAKE) clean; exit $$status
+
+sanitize:
+	$(MAKE) clean
+	$(MAKE) CFLAGS="$(ASAN_FLAGS)" LDFLAGS="-fsanitize=address,undefined" SANITIZED=address test; status=$$?; $(MAKE) clean; exit $$status
+
+mutantes:
+	sh tests/mutantes.sh
 
 clean:
 	rm -rf build $(TARGET)
