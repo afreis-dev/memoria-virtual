@@ -44,29 +44,49 @@ void vmm_init(Vmm *vmm, BackingStore *store, Policy policy)
     }
 }
 
-int vmm_access(Vmm *vmm, LogicalAddress address, Access *access, char *err, size_t err_size)
+int vmm_resolve(Vmm *vmm, uint8_t page, int *frame, int *evicted, char *err, size_t err_size)
 {
-    int frame = vmm->page_to_frame[address.page];
-    int fault = frame < 0;
+    int found = vmm->page_to_frame[page];
 
-    if (fault) {
-        if (vmm->used_frames < FRAME_COUNT) {
-            frame = (int)vmm->used_frames++;
-        } else {
-            frame = choose_victim(vmm);
-            vmm->page_to_frame[vmm->frame_to_page[frame]] = -1;
-        }
-        if (backing_store_read(vmm->store, address.page, vmm->memory[frame], err, err_size) != 0) {
-            return -1;
-        }
-        vmm->frame_to_page[frame] = address.page;
-        vmm->page_to_frame[address.page] = (int16_t)frame;
-        vmm->page_faults++;
+    *evicted = -1;
+    if (found >= 0) {
+        *frame = found;
+        return 0;
     }
+    if (vmm->used_frames < FRAME_COUNT) {
+        found = (int)vmm->used_frames++;
+    } else {
+        found = choose_victim(vmm);
+        *evicted = vmm->frame_to_page[found];
+        vmm->page_to_frame[*evicted] = -1;
+    }
+    if (backing_store_read(vmm->store, page, vmm->memory[found], err, err_size) != 0) {
+        return -1;
+    }
+    vmm->frame_to_page[found] = page;
+    vmm->page_to_frame[page] = (int16_t)found;
+    vmm->page_faults++;
+    *frame = found;
+    return 0;
+}
+
+void vmm_use(Vmm *vmm, int frame, uint8_t offset, Access *access)
+{
     vmm->accesses++;
     vmm->last_use[frame] = vmm->accesses;
-    access->page_fault = fault;
-    access->physical = address_physical((uint32_t)frame, address.offset);
-    access->value = (int8_t)vmm->memory[frame][address.offset];
+    access->physical = address_physical((uint32_t)frame, offset);
+    access->value = (int8_t)vmm->memory[frame][offset];
+    access->tlb_slot = -1;
+}
+
+int vmm_access(Vmm *vmm, LogicalAddress address, Access *access, char *err, size_t err_size)
+{
+    int frame;
+    int evicted;
+
+    if (vmm_resolve(vmm, address.page, &frame, &evicted, err, err_size) != 0) {
+        return -1;
+    }
+    vmm_use(vmm, frame, address.offset, access);
     return 0;
 }

@@ -1,6 +1,8 @@
 CFLAGS ?= -std=c11 -Wall -Wextra -Wpedantic -O2
 FRAMES ?= 128
-CPPFLAGS = -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=$(FRAMES)u
+TLB ?= on
+USE_TLB = $(if $(filter off,$(TLB)),0,1)
+CPPFLAGS = -D_POSIX_C_SOURCE=200809L -DFRAME_COUNT=$(FRAMES)u -DUSE_TLB=$(USE_TLB)
 DEPFLAGS = -MMD -MP
 BUILD_CONFIG = $(CPPFLAGS) $(CFLAGS)
 
@@ -27,7 +29,7 @@ build:
 force:
 
 test: $(TARGET)
-	FRAMES=$(FRAMES) sh tests/run.sh
+	FRAMES=$(FRAMES) TLB=$(TLB) sh tests/run.sh
 
 clean:
 	rm -rf build $(TARGET)

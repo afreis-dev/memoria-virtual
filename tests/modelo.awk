@@ -45,6 +45,11 @@ BEGIN {
         tlb = "none"
     }
     tlbsize = 16
+    ring = 0
+    used = 0
+    total = 0
+    faults = 0
+    hits = 0
     for (i = 0; i < tlbsize; i++) {
         tlbpage[i] = -1
         tlblast[i] = 0

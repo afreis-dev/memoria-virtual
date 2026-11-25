@@ -3,7 +3,13 @@
 root=$(pwd)
 VM=${VM:-$root/vm}
 FRAMES=${FRAMES:-128}
+TLB=${TLB:-on}
 POLICIES="fifo lru"
+if [ "$TLB" = off ]; then
+    TLB_POLICIES="fifo"
+else
+    TLB_POLICIES="fifo lru"
+fi
 dados=$root/dados
 modelo=$root/tests/modelo.awk
 status=0
@@ -43,6 +49,22 @@ make_backing() {
     LC_ALL=C awk 'BEGIN { for (i = 0; i < 65536; i++) printf "%c", (int(i / 256) + i) % 256 }' > "$1"
 }
 
+tlb_model() {
+    if [ "$TLB" = off ]; then
+        printf 'none'
+    else
+        printf '%s' "$1"
+    fi
+}
+
+label() {
+    if [ "$TLB" = off ]; then
+        printf 'pagina %s, sem TLB' "$1"
+    else
+        printf 'pagina %s, TLB %s' "$1" "$2"
+    fi
+}
+
 model() {
     awk -f "$modelo" -v frames="$FRAMES" -v pagina="$1" -v tlb="$2" -v valores="$4" "$3"
 }
@@ -51,10 +73,11 @@ expect_translation() {
     name=$1
     input=$2
     policy=$3
+    tpolicy=$4
     rm -f correct.txt
-    "$VM" "$input" "$policy" fifo > /dev/null 2>&1
+    "$VM" "$input" "$policy" "$tpolicy" > /dev/null 2>&1
     code=$?
-    model "$policy" none "$input" > "$tmp/esperado-saida.txt"
+    model "$policy" "$(tlb_model "$tpolicy")" "$input" > "$tmp/esperado-saida.txt"
     if [ "$code" -eq 0 ] && cmp -s correct.txt "$tmp/esperado-saida.txt"; then
         pass "$name"
     else
@@ -104,6 +127,17 @@ awk 'BEGIN {
     print 0
     print 256
 }' > "$tmp/fila.txt"
+awk 'BEGIN {
+    for (i = 0; i < 20; i++) print i * 256 + i
+    for (r = 0; r < 3; r++) for (i = 19; i >= 0; i--) print i * 256 + 100 + r
+    for (i = 0; i < 20; i += 2) print i * 256 + 7
+}' > "$tmp/tlb.txt"
+awk 'BEGIN {
+    for (i = 1; i <= 140; i++) {
+        print 0
+        print i * 256 + 3
+    }
+}' > "$tmp/invalida.txt"
 
 mkdir "$tmp/work" "$tmp/semstore" "$tmp/curto" "$tmp/dirstore" "$tmp/saida"
 make_backing "$tmp/work/BACKING_STORE.bin"
@@ -155,11 +189,16 @@ else
 fi
 
 for policy in $POLICIES; do
-    expect_translation "saida ($policy): enderecos validos" "$tmp/valido.txt" "$policy"
-    expect_translation "saida ($policy): bordas e mascara de 16 bits" "$tmp/traducao.txt" "$policy"
-    expect_translation "saida ($policy): paginas repetidas reaproveitam o frame" "$tmp/repetidos.txt" "$policy"
-    expect_translation "saida ($policy): substituicao de paginas com $FRAMES frames" "$tmp/substituicao.txt" "$policy"
-    expect_translation "saida ($policy): pagina antiga volta a ser acessada" "$tmp/fila.txt" "$policy"
+    for tpolicy in $TLB_POLICIES; do
+        rotulo=$(label "$policy" "$tpolicy")
+        expect_translation "saida ($rotulo): enderecos validos" "$tmp/valido.txt" "$policy" "$tpolicy"
+        expect_translation "saida ($rotulo): bordas e mascara de 16 bits" "$tmp/traducao.txt" "$policy" "$tpolicy"
+        expect_translation "saida ($rotulo): paginas repetidas" "$tmp/repetidos.txt" "$policy" "$tpolicy"
+        expect_translation "saida ($rotulo): substituicao com $FRAMES frames" "$tmp/substituicao.txt" "$policy" "$tpolicy"
+        expect_translation "saida ($rotulo): pagina antiga volta a ser acessada" "$tmp/fila.txt" "$policy" "$tpolicy"
+        expect_translation "saida ($rotulo): preenchimento e giro da TLB" "$tmp/tlb.txt" "$policy" "$tpolicy"
+        expect_translation "saida ($rotulo): pagina que perde o frame sai da TLB" "$tmp/invalida.txt" "$policy" "$tpolicy"
+    done
 done
 expect_total "espacos, CRLF e linha em branco" "$tmp/espacos.txt" 3
 expect_total "limites de 32 bits" "$tmp/limites.txt" 2
@@ -177,35 +216,45 @@ if [ -f "$dados/addresses.txt" ] && [ -f "$dados/correct.txt" ] && [ -f "$dados/
     mkdir "$tmp/prof"
     cp "$dados/BACKING_STORE.bin" "$tmp/prof/"
     for policy in $POLICIES; do
-        in_dir "$tmp/prof" "$VM" "$dados/addresses.txt" "$policy" fifo > /dev/null 2>&1
-        model "$policy" none "$dados/addresses.txt" "$tmp/valores.txt" > "$tmp/esperado-prof.txt"
-        if cmp -s "$tmp/prof/correct.txt" "$tmp/esperado-prof.txt"; then
-            pass "professor ($policy, $FRAMES frames): saida igual ao modelo"
-        else
-            fail "professor ($policy, $FRAMES frames): saida difere do modelo"
-        fi
-        case "$FRAMES-$policy" in
-            256-*) faltas=244 ;;
-            128-fifo) faltas=538 ;;
-            128-lru) faltas=539 ;;
-            *) faltas= ;;
-        esac
-        if [ -n "$faltas" ]; then
-            if grep -qx "Page Faults = $faltas" "$tmp/prof/correct.txt"; then
-                pass "professor ($policy, $FRAMES frames): $faltas page faults"
+        for tpolicy in $TLB_POLICIES; do
+            rotulo="$(label "$policy" "$tpolicy"), $FRAMES frames"
+            in_dir "$tmp/prof" "$VM" "$dados/addresses.txt" "$policy" "$tpolicy" > /dev/null 2>&1
+            model "$policy" "$(tlb_model "$tpolicy")" "$dados/addresses.txt" "$tmp/valores.txt" > "$tmp/esperado-prof.txt"
+            if cmp -s "$tmp/prof/correct.txt" "$tmp/esperado-prof.txt"; then
+                pass "professor ($rotulo): saida igual ao modelo"
             else
-                fail "professor ($policy, $FRAMES frames): page faults diferentes de $faltas"
+                fail "professor ($rotulo): saida difere do modelo"
             fi
-        fi
-        if [ "$FRAMES-$policy" = "128-lru" ]; then
-            sed 's/ TLB: [0-9]*//' "$dados/correct.txt" | head -n 1000 > "$tmp/ref-sem-tlb.txt"
-            sed -n '1001,1003p' "$dados/correct.txt" >> "$tmp/ref-sem-tlb.txt"
-            if cmp -s "$tmp/prof/correct.txt" "$tmp/ref-sem-tlb.txt"; then
-                pass "professor (lru, 128 frames): saida igual ao correct.txt sem a coluna TLB"
-            else
-                fail "professor (lru, 128 frames): saida difere do correct.txt sem a coluna TLB"
+            case "$FRAMES-$policy" in
+                256-*) faltas=244 ;;
+                128-fifo) faltas=538 ;;
+                128-lru) faltas=539 ;;
+                *) faltas= ;;
+            esac
+            if [ -n "$faltas" ]; then
+                if grep -qx "Page Faults = $faltas" "$tmp/prof/correct.txt"; then
+                    pass "professor ($rotulo): $faltas page faults"
+                else
+                    fail "professor ($rotulo): page faults diferentes de $faltas"
+                fi
             fi
-        fi
+            if [ "$FRAMES-$policy-$TLB-$tpolicy" = "128-lru-on-fifo" ]; then
+                if cmp -s "$tmp/prof/correct.txt" "$dados/correct.txt"; then
+                    pass "professor ($rotulo): correct.txt identico ao do professor"
+                else
+                    fail "professor ($rotulo): correct.txt difere do do professor"
+                fi
+            fi
+            if [ "$FRAMES-$policy-$TLB" = "128-lru-off" ]; then
+                sed 's/ TLB: [0-9]*//' "$dados/correct.txt" | head -n 1000 > "$tmp/ref-sem-tlb.txt"
+                sed -n '1001,1003p' "$dados/correct.txt" >> "$tmp/ref-sem-tlb.txt"
+                if cmp -s "$tmp/prof/correct.txt" "$tmp/ref-sem-tlb.txt"; then
+                    pass "professor ($rotulo): saida igual ao correct.txt sem a coluna TLB"
+                else
+                    fail "professor ($rotulo): saida difere do correct.txt sem a coluna TLB"
+                fi
+            fi
+        done
     done
 fi
 
