@@ -35,18 +35,39 @@ mutante() {
     nome=$1
     arquivo=$2
     expressao=$3
+    frames=${4:-128}
     total=$((total + 1))
     if ! preparar "$arquivo" "$expressao"; then
         printf 'ERRO   %s (a expressao nao alterou %s)\n' "$nome" "$arquivo"
         problemas=$((problemas + 1))
         return
     fi
-    if ! (cd "$tmp/m" && make -s > /dev/null 2>&1); then
+    if ! (cd "$tmp/m" && make -s FRAMES="$frames" > /dev/null 2>&1); then
         printf 'ERRO   %s (o mutante nao compilou)\n' "$nome"
         problemas=$((problemas + 1))
         return
     fi
-    falhas=$(VM="$tmp/m/vm" sh tests/run.sh 2>&1 | grep -c '^FALHA')
+    falhas=$(VM="$tmp/m/vm" FRAMES="$frames" sh tests/run.sh 2>&1 | grep -c '^FALHA')
+    relatar "$nome" "$falhas"
+}
+
+mutante_lru() {
+    nome=$1
+    arquivo=$2
+    expressao=$3
+    frames=$4
+    total=$((total + 1))
+    if ! preparar "$arquivo" "$expressao"; then
+        printf 'ERRO   %s (a expressao nao alterou %s)\n' "$nome" "$arquivo"
+        problemas=$((problemas + 1))
+        return
+    fi
+    if ! (cd "$tmp/m" && make -s FRAMES="$frames" > /dev/null 2>&1); then
+        printf 'ERRO   %s (o mutante nao compilou)\n' "$nome"
+        problemas=$((problemas + 1))
+        return
+    fi
+    falhas=$(VM="$tmp/m/vm" FRAMES="$frames" sh tests/run.sh 2>&1 | grep -c '^FALHA  saida (pagina lru')
     relatar "$nome" "$falhas"
 }
 
@@ -77,6 +98,7 @@ mutante "page fault nao e contado" vmm.c 's/vmm->page_faults++;//'
 mutante "le a pagina errada da memoria secundaria" vmm.c 's/vmm->store, page, vmm->memory\[found\]/vmm->store, (uint8_t)(page + 1), vmm->memory[found]/'
 mutante "endereco fisico com 7 bits de deslocamento" address.c 's/frame << OFFSET_BITS/frame << 7/'
 mutante "pagina que perde o frame continua na TLB" mmu.c 's/tlb_invalidate(&mmu->tlb, (uint8_t)evicted);//'
+mutante_lru "pagina que perde o frame continua na TLB, com LRU de pagina e 4 frames" mmu.c 's/tlb_invalidate(&mmu->tlb, (uint8_t)evicted);//' 4
 mutante "hit da TLB nao atualiza o uso do frame no LRU" mmu.c 's|vmm_use(&mmu->vmm, mmu->tlb.entries\[slot\].frame, address.offset, access);|{ size_t keep = mmu->vmm.last_use[mmu->tlb.entries[slot].frame]; vmm_use(\&mmu->vmm, mmu->tlb.entries[slot].frame, address.offset, access); mmu->vmm.last_use[mmu->tlb.entries[slot].frame] = keep; }|'
 mutante "hit da TLB nao e contado" tlb.c 's/    tlb->hits++;/    tlb->hits += 0;/'
 mutante "LRU da TLB escolhe a entrada mais recente" tlb.c 's/tlb->entries\[i\].last_use < tlb->entries\[slot\].last_use/tlb->entries[i].last_use > tlb->entries[slot].last_use/'
