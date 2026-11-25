@@ -2,5 +2,6 @@ build/
 vm
 correct.txt
 dados/
+/BACKING_STORE.bin
 *.o
 *.d
